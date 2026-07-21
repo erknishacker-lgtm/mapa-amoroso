@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Mapa do Padrão Amoroso</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ENTRADA — zero fricção: curta, acolhedora, 1 CTA -->
+    <section class="page page-letter" id="page-home" data-page="home">
+      <div class="letter-wrap home-wrap">
+        <p class="brand-soft" data-stagger>Mapa do Padrão Amoroso</p>
+        <h1 class="hero-title" data-stagger>
+          Você não está <span class="red">sem sorte</span>.<br />
+          Está repetindo um <span class="red">roteiro</span> — e dá para enxergar.
+        </h1>
+        <p class="sub-hero" data-stagger>
+          Respostas simples, no seu ritmo. No final, clareza sobre o padrão
+          que se repete — para parar de escolher no escuro.
+        </p>
+
+        <ul class="soft-points" data-stagger>
+          <li><span class="soft-check" aria-hidden="true"></span> Só marcar o que combina com você</li>
+          <li><span class="soft-check" aria-hidden="true"></span> No final, o desenho do seu padrão</li>
+          <li><span class="soft-check" aria-hidden="true"></span> Sem julgamento — com clareza</li>
+        </ul>
+
+        <div class="cta-block" data-stagger>
+          <button type="button" class="btn-red btn-soft btn-ripple" id="btn-start">
+            <span class="btn-label">Começar meu mapa</span>
+          </button>
+          <p class="micro">Leva poucos minutos · Pode pausar quando quiser</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOME + SIGNO (opcional — nunca trava) -->
+    <section class="page page-letter is-hidden" id="page-profile" data-page="profile" hidden>
+      <div class="letter-wrap profile-wrap">
+        <button type="button" class="link-text" id="btn-profile-back">← Voltar</button>
+        <p class="brand-soft">Quase lá</p>
+        <h1 class="hero-title hero-title-sm">Como prefere ser chamada?</h1>
+        <p class="sub-hero">Só para personalizar o mapa. Pode pular se quiser.</p>
+
+        <label class="field field-soft">
+          <span class="field-label">Seu nome ou como gosta de ser chamada</span>
+          <input type="text" id="input-name" class="input-soft" placeholder="Ex.: Carla" maxlength="40" autocomplete="given-name" />
+        </label>
+
+        <p class="field-label field-label-block">Seu signo solar <span class="optional">(opcional)</span></p>
+        <div class="sign-grid" id="sign-grid" role="listbox" aria-label="Signos"></div>
+
+        <div class="cta-block profile-cta">
+          <button type="button" class="btn-red btn-soft btn-ripple" id="btn-profile-next">
+            <span class="btn-label">Continuar</span>
+          </button>
+          <button type="button" class="btn-text" id="btn-profile-skip">Pular e ir direto às perguntas</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="page page-quiz is-hidden" id="page-quiz" data-page="quiz" hidden>
+      <div class="quiz-bar">
+        <button type="button" class="link-back" id="btn-quiz-back" aria-label="Voltar">←</button>
+        <div class="quiz-progress" aria-hidden="true">
+          <div class="quiz-progress-fill" id="quiz-progress-fill"></div>
+        </div>
+      </div>
+      <div class="quiz-inner" id="quiz-inner">
+        <figure class="quiz-figure" id="quiz-image-wrap">
+          <img id="quiz-image" class="quiz-image" alt="" width="640" height="360" />
+        </figure>
+        <p class="quiz-axis" id="quiz-axis">Histórico</p>
+        <h2 class="quiz-question" id="quiz-question"></h2>
+        <p class="quiz-help" id="quiz-help"></p>
+        <div class="quiz-options" id="quiz-options" role="group" aria-label="Marque as opções"></div>
+        <div class="quiz-multi-bar" id="quiz-multi-bar">
+          <p class="quiz-multi-hint" id="quiz-multi-hint">Marque o que combina · pode ser mais de um</p>
+          <button type="button" class="btn-red btn-soft btn-ripple" id="btn-multi-next" disabled>
+            <span class="btn-label">Continuar</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOADING — antecipação -->
+    <section class="page page-center is-hidden" id="page-loading" data-page="loading" hidden>
+      <div class="center-box loading-box">
+        <div class="map-radar" aria-hidden="true">
+          <span class="radar-ring"></span>
+          <span class="radar-ring delay"></span>
+          <span class="radar-dot"></span>
+        </div>
+        <p class="loading-title">Montando o esboço do seu mapa…</p>
+        <p class="loading-sub" id="loading-sub">Rastreando repetições no histórico afetivo</p>
+        <ul class="loading-ticks" id="loading-ticks" aria-hidden="true">
+          <li data-tick>Histórico cruzado</li>
+          <li data-tick>Gatilhos mapeados</li>
+          <li data-tick>Crenças identificadas</li>
+          <li data-tick>Padrão dominante encontrado</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- OFERTA / RESULTADO PARCIAL (conversão) -->
+    <section class="page page-offer is-hidden" id="page-partial" data-page="partial" hidden>
+      <div class="offer-wrap">
+
+        <header class="offer-hero">
+          <p class="result-kicker" data-stagger>
+            <span class="kicker-dot" aria-hidden="true"></span>
+            Análise pronta
+          </p>
+          <p class="offer-personal" id="offer-personal" data-stagger></p>
+          <h1 class="result-title" data-stagger>
+            Seu padrão dominante<br />
+            <span class="red pattern-name" id="partial-name"></span>
+          </h1>
+          <p class="result-lead" id="partial-summary" data-stagger></p>
+
+          <div class="match-block" data-stagger>
+            <div class="match-row">
+              <span>Força do padrão nas suas respostas</span>
+              <strong><span id="match-pct">0</span>%</strong>
+            </div>
+            <div class="match-track" aria-hidden="true">
+              <div class="match-fill" id="match-fill"></div>
+            </div>
+            <p class="match-note" id="match-note">Quanto mais alto, mais o ciclo se repete com clareza nos dados.</p>
+          </div>
+        </header>
+
+        <div class="map-progress-card" data-stagger>
+          <div class="map-progress-top">
+            <span class="map-progress-label">Completude do seu mapa</span>
+            <span class="map-progress-pct"><span id="map-pct">0</span>% liberado</span>
+          </div>
+          <div class="map-progress-track">
+            <div class="map-progress-fill" id="map-fill"></div>
+          </div>
+          <p class="map-progress-copy">
+            Você já investiu o mais difícil: olhar para o ciclo.
+            O que falta é o <strong>desenho completo</strong> — gatilhos, crenças, sinais e o plano para quebrar de vez.
+          </p>
+        </div>
+
+        <div class="panel panel-found" data-stagger>
+          <h3 class="panel-title">O que já identificamos em você</h3>
+          <ul class="panel-list reveal-list" id="partial-bullets"></ul>
+        </div>
+
+        <div class="hook-card" data-stagger>
+          <p class="hook-label">O que a maioria não vê sozinha</p>
+          <p class="hook-text" id="offer-hook"></p>
+        </div>
+
+        <!-- Mapa visual + o principal do parcial + capítulos -->
+        <div class="chapters" data-stagger>
+          <h3 class="chapters-title">Seu mapa completo contém</h3>
+
+          <figure class="map-hero">
+            <img
+              src="images/map-complete.jpg"
+              alt="Ilustração do mapa do padrão amoroso"
+              class="map-hero-img"
+              width="640"
+              height="360"
+            />
+            <figcaption class="map-hero-cap">
+              Visão do mapa — o ciclo em camadas (parte liberada, parte ainda coberta)
+            </figcaption>
+          </figure>
+
+          <div class="map-snapshot" id="map-snapshot">
+            <div class="map-snapshot-head">
+              <span class="map-snapshot-badge">Já revelado</span>
+              <h4 class="map-snapshot-pattern" id="snapshot-pattern"></h4>
+              <p class="map-snapshot-lead" id="snapshot-lead"></p>
+            </div>
+            <ul class="map-snapshot-list" id="snapshot-bullets"></ul>
+            <div class="map-snapshot-locked">
+              <p class="map-snapshot-locked-title">Ainda coberto no mapa</p>
+              <ul class="map-snapshot-locked-list">
+                <li>Gatilhos exatos que disparam o ciclo em você</li>
+                <li>Crenças internas que sustentam a repetição</li>
+                <li>Checklist de sinais que você costuma suavizar</li>
+                <li>Técnicas práticas para interromper o roteiro</li>
+                <li>Critérios para a próxima escolha</li>
+              </ul>
+              <div class="map-snapshot-fog" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <ul class="chapter-list" id="chapter-list">
+            <!-- preenchido por JS -->
+          </ul>
+        </div>
+
+        <div class="peek-grid" data-stagger>
+          <div class="peek-card is-open">
+            <span class="peek-badge">Livre</span>
+            <h4 id="peek-pattern-title">Seu padrão</h4>
+            <p id="peek-pattern-text">Você já sabe <em>qual</em> ciclo está ativo.</p>
+          </div>
+          <div class="peek-card is-locked">
+            <span class="peek-badge peek-badge-lock">Bloqueado</span>
+            <h4>Como ele te escolhe de volta</h4>
+            <p class="blur-text">Por que certos homens acendem exatamente esse alarme em você…</p>
+          </div>
+          <div class="peek-card is-locked">
+            <span class="peek-badge peek-badge-lock">Bloqueado</span>
+            <h4>Técnicas de quebra</h4>
+            <p class="blur-text">Passos práticos para interromper o ciclo antes da próxima escolha…</p>
+          </div>
+        </div>
+
+        <blockquote class="quote quote-offer" data-stagger>
+          “Eu achei que era azar. Quando fiz o mapa, vi que eu ignorava os mesmos sinais em todo homem.”
+          <cite>Patrícia — 41 anos</cite>
+        </blockquote>
+
+        <div class="social-strip" data-stagger>
+          <p>Mulheres que já começaram a enxergar o ciclo em vez de chamar de “azar”.</p>
+          <div class="social-faces" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- Oferta -->
+        <div class="price-stage" data-stagger id="price-stage">
+          <p class="price-eyebrow">Acesso imediato ao mapa completo</p>
+          <p class="price-compare">De <s>R$&nbsp;119,90</s> por apenas</p>
+          <p class="price-now">R$&nbsp;9,97</p>
+          <p class="price-anchor">Menos que uma saída para tentar esquecer outra dor.</p>
+          <ul class="include-list">
+            <li>Diagnóstico completo do seu padrão</li>
+            <li>Gatilhos + crenças + sinais de alerta</li>
+            <li>Técnicas práticas (como orientação psicológica acessível)</li>
+            <li>Critérios para a próxima escolha</li>
+            <li>Base para rotina de proteção emocional (28 dias)</li>
+          </ul>
+          <p class="guarantee-pill">
+            Garantia de 7 dias — se não identificar ao menos um padrão repetido, devolvemos.
+          </p>
+        </div>
+
+        <div class="cta-sticky-space"></div>
+      </div>
+
+      <!-- CTA fixo — bem visível -->
+      <div class="offer-cta-bar" id="offer-cta-bar">
+        <div class="offer-cta-inner">
+          <div class="offer-cta-copy">
+            <strong>Desbloqueie agora</strong>
+            <span class="offer-cta-price">
+              De <s>R$&nbsp;119,90</s> por apenas
+              <em class="offer-cta-price-now">R$&nbsp;9,97</em>
+            </span>
+          </div>
+          <a
+            class="btn-red btn-soft btn-ripple btn-cta-main"
+            id="btn-unlock"
+            href="https://lastlink.com/p/C53821E2C/checkout-payment/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="btn-label">Quero meu mapa completo</span>
+          </a>
+        </div>
+        <p class="offer-cta-sub">Você não precisa sofrer mais uma vez para aprender.</p>
+      </div>
+    </section>
+
+    <!-- CHECKOUT (fallback / se alguém cair aqui) -->
+    <section class="page page-center is-hidden" id="page-pay" data-page="pay" hidden>
+      <div class="center-box pay-box">
+        <div class="pay-seal" aria-hidden="true">✓</div>
+        <h2 class="pay-title">Desbloqueie seu mapa completo</h2>
+        <p class="pay-price">R$&nbsp;9,97</p>
+        <p class="pay-desc">
+          Pagamento seguro. Você será levada à página de checkout.
+        </p>
+        <a
+          class="btn-red btn-soft btn-ripple"
+          id="btn-pay-demo"
+          href="https://lastlink.com/p/C53821E2C/checkout-payment/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span class="btn-label">Pagar R$&nbsp;9,97 e liberar o mapa</span>
+        </a>
+        <button type="button" class="btn-ghost" id="btn-pay-back">Voltar ao resultado</button>
+      </div>
+    </section>
+
+    <!-- RESULTADO COMPLETO -->
+    <section class="page page-result is-hidden" id="page-full" data-page="full" hidden>
+      <div class="letter-wrap full-wrap">
+        <p class="result-kicker success-kicker">
+          <span class="kicker-dot kicker-dot-ok"></span>
+          Mapa completo · desbloqueado
+        </p>
+        <h1 class="result-title">
+          <span class="red" id="full-name"></span>
+        </h1>
+        <p class="result-lead" id="full-mirror"></p>
+
+        <article class="block" data-stagger>
+          <h3>1. O que esse padrão é (em linguagem clara)</h3>
+          <p id="full-what"></p>
+        </article>
+
+        <article class="block" data-stagger>
+          <h3>2. Como ele se forma em você</h3>
+          <p id="full-how"></p>
+        </article>
+
+        <article class="block" data-stagger>
+          <h3>3. Seus gatilhos mais prováveis</h3>
+          <ul id="full-triggers"></ul>
+        </article>
+
+        <article class="block" data-stagger>
+          <h3>4. Crenças que sustentam o ciclo</h3>
+          <ul id="full-beliefs"></ul>
+        </article>
+
+        <article class="block" data-stagger>
+          <h3>5. Sinais de alerta que você tende a suavizar</h3>
+          <ul id="full-signals"></ul>
+        </article>
+
+        <article class="block block-tech" data-stagger>
+          <h3>6. Técnicas para interromper (prática)</h3>
+          <div id="full-techniques"></div>
+        </article>
+
+        <article class="block" data-stagger>
+          <h3>7. Critérios para a próxima escolha</h3>
+          <ul id="full-criteria"></ul>
+        </article>
+
+        <article class="block block-soft" data-stagger>
+          <h3>Nota importante</h3>
+          <p>
+            Este mapa organiza padrões comuns descritos em psicologia dos relacionamentos
+            (apego, repetição afetiva, regulação emocional). Ele <strong>não diagnostica transtorno</strong>
+            e <strong>não substitui terapia</strong>. Se você estiver em risco ou sofrimento intenso,
+            busque ajuda profissional.
+          </p>
+        </article>
+
+        <button type="button" class="btn-ghost" id="btn-restart">Refazer o mapa</button>
+        <p class="disclaimer">Material de autoconhecimento. Não substitui psicoterapia.</p>
+      </div>
+    </section>
+
+  </div>
+  <script src="data.js"></script>
+  <script src="motion.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
