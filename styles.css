@@ -110,6 +110,119 @@ body {
   }
 }
 
+/* Home = referência mobile (screenshot) */
+.page-home {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-home .home-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 28px 22px 32px;
+  padding-top: max(28px, calc(12px + env(safe-area-inset-top, 0px)));
+  padding-bottom: max(32px, calc(20px + env(safe-area-inset-bottom, 0px)));
+  box-sizing: border-box;
+}
+
+.page-home .brand-soft {
+  margin: 0 0 18px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #9a9a9a;
+  text-transform: none;
+}
+
+.page-home .hero-title {
+  margin: 0 0 18px;
+  font-family: var(--font);
+  font-size: clamp(1.85rem, 7.2vw, 2.35rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: #111;
+  text-wrap: balance;
+}
+
+.page-home .hero-title .red {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.page-home .sub-hero {
+  margin: 0 0 28px;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  color: #8a8a8a;
+  line-height: 1.55;
+  text-wrap: pretty;
+  max-width: none;
+}
+
+.page-home .soft-points {
+  margin: 0 0 36px;
+  gap: 16px;
+}
+
+.page-home .soft-points li {
+  font-size: 1rem;
+  color: #4a4a4a;
+  gap: 14px;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+
+.page-home .soft-check {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 1.5px solid var(--red);
+  background: transparent;
+  border-radius: 50%;
+}
+
+.page-home .soft-check::after {
+  left: 7px;
+  top: 3px;
+  width: 4px;
+  height: 9px;
+  border-width: 0 1.5px 1.5px 0;
+  border-color: var(--red);
+}
+
+.page-home .cta-block-home {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.page-home .btn-home {
+  max-width: none;
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #e10600;
+  box-shadow: none;
+}
+
+.page-home .btn-home:hover {
+  background: #c50500;
+}
+
+.page-home .micro-home {
+  margin-top: 16px;
+  font-size: 0.875rem;
+  color: #b0b0b0;
+  font-weight: 400;
+}
+
 .hero-title {
   margin: 0 0 14px;
   font-family: var(--font);
