@@ -14,6 +14,18 @@
     pulseOnce: () => {},
     nudge: () => {},
   };
+  const Px = window.MapaPixel || {
+    viewContent: function () {},
+    startQuiz: function () {},
+    quizBegin: function () {},
+    quizProgress: function () {},
+    optionSelect: function () {},
+    quizComplete: function () {},
+    viewResult: function () {},
+    initiateCheckout: function () {},
+    restart: function () {},
+    viewPay: function () {},
+  };
 
   if (!D) return;
 
@@ -21,6 +33,7 @@
   const CHECKOUT_URL = "https://lastlink.com/p/C53821E2C/checkout-payment/";
 
   function openCheckout() {
+    Px.initiateCheckout();
     window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer");
   }
 
@@ -96,6 +109,9 @@
       });
     } else if (elCtaBar) {
       elCtaBar.classList.remove("is-visible");
+    }
+    if (name === "pay") {
+      Px.viewPay();
     }
     if (name === "full") {
       requestAnimationFrame(() => {
@@ -193,6 +209,7 @@
     elQuestion.textContent = q.text;
     elHelp.textContent = q.help || "Marque o que combina · pode ser mais de um";
     elFill.style.width = Math.round((state.index / total) * 100) + "%";
+    Px.quizProgress(state.index, total, q.axis);
 
     if (q.image) {
       elImgWrap.hidden = false;
@@ -257,8 +274,10 @@
     btn.classList.toggle("is-selected", on);
     btn.setAttribute("aria-checked", on ? "true" : "false");
     updateMultiNext();
-    // Ao marcar uma opção, rola até o botão Continuar
-    if (on) scrollToContinue();
+    if (on) {
+      Px.optionSelect({ index: state.index, count: state.multiSelected.size });
+      scrollToContinue();
+    }
   }
 
   function updateMultiNext() {
@@ -315,6 +334,7 @@
   }
 
   function finishQuiz() {
+    Px.quizComplete();
     go("loading");
     const steps = [
       "Lendo o que você marcou…",
@@ -440,6 +460,8 @@
       pct >= 80
         ? "Padrão forte e repetido nas suas marcações."
         : "Padrão identificável; o mapa completo aprofunda onde ele se instala.";
+
+    Px.viewResult({ pattern: p.name, match: pct });
   }
 
   function fillList(id, items) {
@@ -490,6 +512,7 @@
   });
 
   document.getElementById("btn-start").addEventListener("click", () => {
+    Px.startQuiz();
     go("profile");
   });
 
@@ -500,6 +523,11 @@
   document.getElementById("btn-profile-next").addEventListener("click", () => {
     saveProfile();
     resetScores();
+    Px.quizBegin({
+      hasName: !!state.name,
+      hasSign: !!state.sign,
+      skipped: false,
+    });
     go("quiz");
     window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
   });
@@ -509,6 +537,7 @@
     state.sign = "";
     if (elName) elName.value = "";
     resetScores();
+    Px.quizBegin({ hasName: false, hasSign: false, skipped: true });
     go("quiz");
     window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
   });
@@ -529,13 +558,20 @@
 
   elMultiNext.addEventListener("click", confirmMulti);
 
-  // CTAs de pagamento: link real Lastlink (href no HTML). Sem segundo open.
+  // CTAs de pagamento Lastlink + pixel no clique
+  document.addEventListener("click", (e) => {
+    const pay = e.target.closest("#btn-unlock, #btn-pay-demo, a[href*='lastlink.com']");
+    if (pay) {
+      Px.initiateCheckout();
+    }
+  });
 
   document.getElementById("btn-pay-back").addEventListener("click", () => {
     go("partial", "back");
   });
 
   document.getElementById("btn-restart").addEventListener("click", () => {
+    Px.restart();
     resetScores();
     state.name = "";
     state.sign = "";
