@@ -73,7 +73,7 @@
 
     if (name === "home") {
       requestAnimationFrame(() => {
-        const wrap = document.querySelector(".home-wrap");
+        const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
         if (wrap) M.staggerIn(wrap, "[data-stagger]");
       });
     }
@@ -545,7 +545,7 @@
 
   show("home");
   requestAnimationFrame(() => {
-    const wrap = document.querySelector(".home-wrap");
+    const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
     if (wrap) M.staggerIn(wrap, "[data-stagger]");
   });
 })();
