@@ -70,8 +70,43 @@
   const elMultiHint = document.getElementById("quiz-multi-hint");
   const elQuizInner = document.getElementById("quiz-inner");
   const elCtaBar = document.getElementById("offer-cta-bar");
+  const elLandSticky = document.getElementById("land-sticky");
   const elName = document.getElementById("input-name");
   const elSignGrid = document.getElementById("sign-grid");
+  const elStartInline = document.getElementById("btn-start");
+
+  function setLandSticky(on) {
+    if (!elLandSticky) return;
+    if (on) {
+      elLandSticky.hidden = false;
+      requestAnimationFrame(function () {
+        elLandSticky.classList.add("is-visible");
+      });
+    } else {
+      elLandSticky.classList.remove("is-visible");
+      window.setTimeout(function () {
+        if (!elLandSticky.classList.contains("is-visible")) {
+          elLandSticky.hidden = true;
+        }
+      }, 360);
+    }
+  }
+
+  function updateLandStickyByScroll() {
+    if (!pages.home || pages.home.classList.contains("is-hidden") || pages.home.hasAttribute("hidden")) {
+      setLandSticky(false);
+      return;
+    }
+    // Sempre visível no topo; some só quando o CTA do final já está na tela
+    if (!elStartInline) {
+      setLandSticky(true);
+      return;
+    }
+    const rect = elStartInline.getBoundingClientRect();
+    const vh = window.innerHeight || 0;
+    const inlineOnScreen = rect.top < vh - 72 && rect.bottom > 60;
+    setLandSticky(!inlineOnScreen);
+  }
 
   function show(name) {
     Object.keys(pages).forEach((key) => {
@@ -85,10 +120,14 @@
     window.scrollTo(0, 0);
 
     if (name === "home") {
+      setLandSticky(true);
       requestAnimationFrame(() => {
         const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
         if (wrap) M.staggerIn(wrap, "[data-stagger]");
+        updateLandStickyByScroll();
       });
+    } else {
+      setLandSticky(false);
     }
     if (name === "profile") {
       renderSigns();
@@ -511,10 +550,25 @@
     if (btn && !btn.disabled) M.ripple(e, btn);
   });
 
-  document.getElementById("btn-start").addEventListener("click", () => {
+  function startFromLanding() {
     Px.startQuiz();
     go("profile");
-  });
+  }
+
+  document.getElementById("btn-start").addEventListener("click", startFromLanding);
+  var btnSticky = document.getElementById("btn-start-sticky");
+  if (btnSticky) {
+    btnSticky.addEventListener("click", startFromLanding);
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      updateLandStickyByScroll();
+    },
+    { passive: true }
+  );
+  window.addEventListener("resize", updateLandStickyByScroll);
 
   document.getElementById("btn-profile-back").addEventListener("click", () => {
     go("home", "back");
