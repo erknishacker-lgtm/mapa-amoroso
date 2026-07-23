@@ -1,132 +1,30 @@
 -- ============================================================
--- Mapa do Padrão Amoroso — Tracking Enlead (IDEMPOTENTE)
--- Cole TUDO no SQL Editor e rode de uma vez
--- Corrige instalação antiga (analytics_events sem lead_id)
+-- CORREÇÃO RÁPIDA — rode isto no SQL Editor se o painel não abrir
+-- Senha: mapa2026
 -- ============================================================
 
--- 0) Remove função antiga (evita conflito de retorno)
-drop function if exists public.admin_analytics(text, timestamptz, timestamptz);
-
--- 1) LINHA POR PESSOA (esteira)
-create table if not exists public.quiz_leads (
-  lead_id text primary key,
-  session_id text,
-  started_at timestamptz not null default now(),
-  completed_at timestamptz,
-  last_seen_at timestamptz not null default now(),
-  duration_seconds int,
-  status text not null default 'started',
-  current_step int not null default 0,
-  max_step_reached int not null default 0,
-  ip text,
-  country text,
-  region text,
-  city text,
-  device_type text,
-  os text,
-  browser text,
-  language text,
-  user_agent text,
-  referrer text,
-  landing_url text,
-  utm_source text,
-  utm_medium text,
-  utm_campaign text,
-  utm_content text,
-  utm_term text,
-  fbclid text,
-  gclid text,
-  ttclid text,
-  fbc text,
-  fbp text,
-  name text,
-  sign text,
-  answers jsonb not null default '{}'::jsonb,
-  steps jsonb not null default '{}'::jsonb,
-  pattern_id text,
-  pattern_name text,
-  checkout_clicked_at timestamptz,
-  meta jsonb not null default '{}'::jsonb
-);
-
-create index if not exists quiz_leads_started_at_idx on public.quiz_leads (started_at desc);
-create index if not exists quiz_leads_status_idx on public.quiz_leads (status);
-create index if not exists quiz_leads_max_step_idx on public.quiz_leads (max_step_reached);
-
--- 2) LOG DE EVENTOS
--- Se a tabela antiga existir SEM lead_id, recriamos de forma segura
-do $$
-begin
-  if exists (
-    select 1 from information_schema.tables
-    where table_schema = 'public' and table_name = 'analytics_events'
-  ) and not exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'analytics_events' and column_name = 'lead_id'
-  ) then
-    drop table public.analytics_events cascade;
-  end if;
-end $$;
-
-create table if not exists public.analytics_events (
-  id uuid primary key default gen_random_uuid(),
-  lead_id text,
-  session_id text not null,
-  event_type text not null,
-  question_id text,
-  option_ids int[] default '{}',
-  option_labels text[] default '{}',
-  step_index int,
-  pattern_id text,
-  meta jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
-);
-
--- Garante colunas se a tabela já existia com schema parcial
-alter table public.analytics_events add column if not exists lead_id text;
-alter table public.analytics_events add column if not exists session_id text;
-alter table public.analytics_events add column if not exists event_type text;
-alter table public.analytics_events add column if not exists question_id text;
-alter table public.analytics_events add column if not exists option_ids int[] default '{}';
-alter table public.analytics_events add column if not exists option_labels text[] default '{}';
-alter table public.analytics_events add column if not exists step_index int;
-alter table public.analytics_events add column if not exists pattern_id text;
-alter table public.analytics_events add column if not exists meta jsonb not null default '{}'::jsonb;
-alter table public.analytics_events add column if not exists created_at timestamptz not null default now();
-
--- session_id / event_type podem ter ficado null em rows antigas; preenche default se vazio
-update public.analytics_events set session_id = coalesce(session_id, 'legacy') where session_id is null;
-update public.analytics_events set event_type = coalesce(event_type, 'unknown') where event_type is null;
-
-create index if not exists analytics_events_created_at_idx on public.analytics_events (created_at desc);
-create index if not exists analytics_events_lead_idx on public.analytics_events (lead_id);
-create index if not exists analytics_events_type_idx on public.analytics_events (event_type);
-create index if not exists analytics_events_session_idx on public.analytics_events (session_id);
-
--- 3) SENHA ADMIN
-create table if not exists public.app_settings (
-  key text primary key,
-  value text not null
-);
-
+-- Senha forçada
 insert into public.app_settings (key, value)
 values ('admin_password', 'mapa2026')
 on conflict (key) do update set value = excluded.value;
 
--- 4) Permissões + RLS
+-- Permissões (sem isso o anon não grava / RPC falha em silêncio)
 grant usage on schema public to anon, authenticated;
+
 grant insert, update on table public.quiz_leads to anon, authenticated;
 grant insert on table public.analytics_events to anon, authenticated;
+grant select on table public.app_settings to postgres;
 
+-- Políticas abertas para insert/update (visitante do site)
 alter table public.quiz_leads enable row level security;
 alter table public.analytics_events enable row level security;
 alter table public.app_settings enable row level security;
 
 drop policy if exists "anon_insert_leads" on public.quiz_leads;
 drop policy if exists "anon_update_leads" on public.quiz_leads;
-drop policy if exists "anon_insert_events" on public.analytics_events;
 drop policy if exists "allow_insert_leads" on public.quiz_leads;
 drop policy if exists "allow_update_leads" on public.quiz_leads;
+drop policy if exists "anon_insert_events" on public.analytics_events;
 drop policy if exists "allow_insert_events" on public.analytics_events;
 
 create policy "allow_insert_leads"
@@ -135,13 +33,16 @@ create policy "allow_insert_leads"
 
 create policy "allow_update_leads"
   on public.quiz_leads for update
-  using (true) with check (true);
+  using (true)
+  with check (true);
 
 create policy "allow_insert_events"
   on public.analytics_events for insert
   with check (true);
 
--- 5) FUNÇÃO DO PAINEL
+-- Garante que a função existe e usa a senha correta
+drop function if exists public.admin_analytics(text, timestamptz, timestamptz);
+
 create or replace function public.admin_analytics(
   p_password text,
   p_from timestamptz default (now() - interval '30 days'),
@@ -158,7 +59,9 @@ declare
   v_to timestamptz := coalesce(p_to, now());
 begin
   select value into v_expected from public.app_settings where key = 'admin_password';
-  if v_expected is null or p_password is distinct from v_expected then
+
+  -- aceita com ou sem espaços
+  if v_expected is null or btrim(p_password) is distinct from btrim(v_expected) then
     raise exception 'UNAUTHORIZED' using errcode = '42501';
   end if;
 
@@ -221,7 +124,6 @@ begin
       ) as s(step_key, step_index, label)
       cross join leads l
       group by s.step_key, s.step_index, s.label
-      order by s.step_index, s.step_key
     ),
     by_day as (
       select
@@ -251,10 +153,9 @@ begin
         lab as option_label,
         count(*) as times
       from leads l
-      cross join lateral jsonb_each(l.answers) kv(qkey, qval)
+      cross join lateral jsonb_each(coalesce(l.answers, '{}'::jsonb)) kv(qkey, qval)
       cross join lateral jsonb_array_elements_text(coalesce(qval->'labels', '[]'::jsonb)) lab
       group by 1, 2
-      order by 1, times desc
     ),
     patterns as (
       select
@@ -264,34 +165,13 @@ begin
       from leads
       where pattern_id is not null
       group by pattern_id
-      order by sessions desc
     ),
     lead_rows as (
       select
-        lead_id,
-        started_at,
-        completed_at,
-        last_seen_at,
-        duration_seconds,
-        status,
-        current_step,
-        max_step_reached,
-        country,
-        region,
-        city,
-        device_type,
-        os,
-        browser,
-        utm_source,
-        utm_medium,
-        utm_campaign,
-        name,
-        sign,
-        pattern_id,
-        pattern_name,
-        answers,
-        steps,
-        checkout_clicked_at is not null as checkout
+        lead_id, started_at, completed_at, last_seen_at, duration_seconds, status,
+        current_step, max_step_reached, country, region, city, device_type, os, browser,
+        utm_source, utm_medium, utm_campaign, name, sign, pattern_id, pattern_name,
+        answers, steps, checkout_clicked_at is not null as checkout
       from leads
       order by started_at desc
       limit 500
@@ -299,7 +179,7 @@ begin
     select json_build_object(
       'from', v_from,
       'to', v_to,
-      'totals', (select row_to_json(t) from totals t),
+      'totals', coalesce((select row_to_json(t) from totals t), '{}'::json),
       'step_funnel', coalesce((
         select json_agg(json_build_object(
           'step_key', step_key,
@@ -324,3 +204,6 @@ end;
 $$;
 
 grant execute on function public.admin_analytics(text, timestamptz, timestamptz) to anon, authenticated, public;
+
+-- Conferência
+select key, value from public.app_settings where key = 'admin_password';

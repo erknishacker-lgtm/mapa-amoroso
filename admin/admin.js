@@ -623,11 +623,24 @@
     load();
   }
 
-  el.loginBtn.addEventListener("click", function () {
+  el.loginBtn.addEventListener("click", async function () {
     var p = (el.pass.value || "").trim();
     if (!p) return showLogin("Digite a senha.");
+    el.loginErr.hidden = true;
+    el.loginBtn.disabled = true;
+    el.loginBtn.textContent = "Entrando…";
     setPassword(p);
-    showDash();
+    // valida senha ANTES de trocar de tela
+    try {
+      await fetchAnalytics();
+      showDash();
+    } catch (e) {
+      clearPassword();
+      showLogin(e.message || "Não foi possível entrar.");
+    } finally {
+      el.loginBtn.disabled = false;
+      el.loginBtn.textContent = "Abrir painel";
+    }
   });
   el.pass.addEventListener("keydown", function (e) {
     if (e.key === "Enter") el.loginBtn.click();

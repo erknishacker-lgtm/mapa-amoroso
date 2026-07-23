@@ -7,6 +7,14 @@
   <title>Tracking Quiz · Mapa Amoroso</title>
   <link rel="stylesheet" href="admin.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <!-- config embutida (fallback se ../config.js falhar no path) -->
+  <script>
+    window.MAPA_CONFIG = window.MAPA_CONFIG || {
+      supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
+      supabaseAnonKey: "sb_publishable_RO2B7XCTosTdDTCPpMNAjA_iZP68utA",
+      timezoneLabel: "America/Sao_Paulo"
+    };
+  </script>
   <script src="../config.js" defer></script>
   <script src="../data.js" defer></script>
   <script src="admin.js" defer></script>
