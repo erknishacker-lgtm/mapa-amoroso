@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Admin · Analytics Mapa Amoroso</title>
+  <link rel="stylesheet" href="admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="../config.js" defer></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <p class="login-kicker">Mapa do Padrão Amoroso</p>
+      <h1>Painel de analytics</h1>
+      <p class="login-help">Senha definida no Supabase (app_settings). Padrão do schema: <code>mapa2026</code></p>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" id="admin-password" autocomplete="current-password" placeholder="••••••••" />
+      </label>
+      <button type="button" class="btn-primary" id="btn-login">Entrar</button>
+      <p class="login-error" id="login-error" hidden></p>
+    </div>
+  </div>
+
+  <div id="dash" class="dash" hidden>
+    <header class="dash-header">
+      <div>
+        <p class="dash-kicker">Analytics</p>
+        <h1>Funil do quiz</h1>
+      </div>
+      <div class="filters">
+        <div class="presets">
+          <button type="button" class="chip" data-range="today">Hoje</button>
+          <button type="button" class="chip is-active" data-range="7">7 dias</button>
+          <button type="button" class="chip" data-range="30">30 dias</button>
+        </div>
+        <label class="field field-inline">
+          <span>De</span>
+          <input type="date" id="date-from" />
+        </label>
+        <label class="field field-inline">
+          <span>Até</span>
+          <input type="date" id="date-to" />
+        </label>
+        <button type="button" class="btn-primary" id="btn-refresh">Atualizar</button>
+        <button type="button" class="btn-ghost" id="btn-logout">Sair</button>
+      </div>
+    </header>
+
+    <p class="status" id="status-line">Carregando…</p>
+
+    <section class="kpis" id="kpis"></section>
+
+    <section class="panel">
+      <h2>Funil</h2>
+      <p class="panel-sub">Sessões distintas em cada etapa (gargalo = maior queda entre barras)</p>
+      <div class="chart-wrap">
+        <canvas id="chart-funnel" height="120"></canvas>
+      </div>
+      <div class="funnel-table" id="funnel-table"></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Por dia</h2>
+        <div class="chart-wrap">
+          <canvas id="chart-day" height="160"></canvas>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Por hora (fuso São Paulo)</h2>
+        <div class="chart-wrap">
+          <canvas id="chart-hour" height="160"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Perguntas — passagem e abandono</h2>
+      <p class="panel-sub">% que viu a pergunta e avançou (question_next / question_view)</p>
+      <div class="table-scroll">
+        <table class="data-table" id="table-questions">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pergunta</th>
+              <th>Viu</th>
+              <th>Avançou</th>
+              <th>% passou</th>
+              <th>% abandonou</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="answers-panel">
+      <h2>Respostas mais marcadas</h2>
+      <p class="panel-sub" id="answers-sub">Selecione uma pergunta na tabela acima, ou veja o top geral.</p>
+      <div id="answers-list" class="answers-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Padrões gerados no resultado</h2>
+      <div class="chart-wrap chart-sm">
+        <canvas id="chart-patterns" height="140"></canvas>
+      </div>
+      <div id="patterns-list" class="answers-list"></div>
+    </section>
+  </div>
+</body>
+</html>

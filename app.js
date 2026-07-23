@@ -26,6 +26,18 @@
     restart: function () {},
     viewPay: function () {},
   };
+  const Ax = window.MapaAnalytics || {
+    landing: function () {},
+    start: function () {},
+    profile: function () {},
+    questionView: function () {},
+    questionAnswer: function () {},
+    questionNext: function () {},
+    result: function () {},
+    checkout: function () {},
+    restart: function () {},
+    flush: function () {},
+  };
 
   if (!D) return;
 
@@ -249,6 +261,7 @@
     elHelp.textContent = q.help || "Marque o que combina · pode ser mais de um";
     elFill.style.width = Math.round((state.index / total) * 100) + "%";
     Px.quizProgress(state.index, total, q.axis);
+    Ax.questionView(q, state.index);
 
     if (q.image) {
       elImgWrap.hidden = false;
@@ -343,6 +356,9 @@
     const idxs = Array.from(state.multiSelected).sort((a, b) => a - b);
     state.answers[state.index] = idxs;
     idxs.forEach((i) => applyScores(q.options[i].scores, 1));
+    const labels = idxs.map((i) => (q.options[i] && q.options[i].label) || String(i));
+    Ax.questionAnswer(q, state.index, idxs, labels);
+    Ax.questionNext(q, state.index);
     advance();
   }
 
@@ -374,6 +390,7 @@
 
   function finishQuiz() {
     Px.quizComplete();
+    Ax.flush();
     go("loading");
     const steps = [
       "Lendo o que você marcou…",
@@ -501,6 +518,12 @@
         : "Padrão identificável; o mapa completo aprofunda onde ele se instala.";
 
     Px.viewResult({ pattern: p.name, match: pct });
+    Ax.result(state.patternId, {
+      patternName: p.name,
+      match: pct,
+      name: displayName() || null,
+      sign: state.sign || null,
+    });
   }
 
   function fillList(id, items) {
@@ -552,6 +575,7 @@
 
   function startFromLanding() {
     Px.startQuiz();
+    Ax.start();
     go("profile");
   }
 
@@ -582,6 +606,12 @@
       hasSign: !!state.sign,
       skipped: false,
     });
+    Ax.profile({
+      hasName: !!state.name,
+      hasSign: !!state.sign,
+      skipped: false,
+      sign: state.sign || null,
+    });
     go("quiz");
     window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
   });
@@ -592,6 +622,7 @@
     if (elName) elName.value = "";
     resetScores();
     Px.quizBegin({ hasName: false, hasSign: false, skipped: true });
+    Ax.profile({ hasName: false, hasSign: false, skipped: true, sign: null });
     go("quiz");
     window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
   });
@@ -612,11 +643,13 @@
 
   elMultiNext.addEventListener("click", confirmMulti);
 
-  // CTAs de pagamento Lastlink + pixel no clique
+  // CTAs de pagamento Lastlink + pixel + analytics
   document.addEventListener("click", (e) => {
     const pay = e.target.closest("#btn-unlock, #btn-pay-demo, a[href*='lastlink.com']");
     if (pay) {
       Px.initiateCheckout();
+      Ax.checkout();
+      Ax.flush();
     }
   });
 
@@ -626,6 +659,7 @@
 
   document.getElementById("btn-restart").addEventListener("click", () => {
     Px.restart();
+    Ax.restart();
     resetScores();
     state.name = "";
     state.sign = "";
@@ -634,6 +668,7 @@
   });
 
   show("home");
+  Ax.landing();
   requestAnimationFrame(() => {
     const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
     if (wrap) M.staggerIn(wrap, "[data-stagger]");
