@@ -5,9 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
   <title>Quiz Intelligence · Mapa Amoroso</title>
+  <!-- Caminhos absolutos: em /admin (sem barra) o CSS relativo quebrava e a página ficava "crua" -->
+  <base href="/admin/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/admin/admin.css" />
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
@@ -315,7 +318,6 @@
           if (typeof window.__adminRender === "function") {
             window.__adminRender(data);
           } else {
-            // fallback mínimo de KPIs
             var t = data.totals || {};
             var k = document.getElementById("kpis");
             if (k) {
@@ -352,7 +354,8 @@
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="../data.js" onerror="console.warn('data.js offline')"></script>
-  <script src="admin.js" onerror="console.warn('admin.js offline')"></script>
+  <script src="/data.js" onerror="console.warn('data.js offline')"></script>
+  <script src="/admin/admin.js" onerror="console.warn('admin.js offline')"></script>
+  <script src="admin.js" onerror=""></script>
 </body>
 </html>
