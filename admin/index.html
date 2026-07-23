@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>Quiz Intelligence · Mapa Amoroso</title>
+  <title>Quiz Intelligence · Mapa do Ciclo Amoroso</title>
   <!-- Caminhos absolutos: em /admin (sem barra) o CSS relativo quebrava e a página ficava "crua" -->
   <base href="/admin/" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,11 +22,11 @@
         <div class="login-mark">QI</div>
         <div>
           <p class="login-kicker">Quiz Intelligence</p>
-          <p class="login-product">Mapa do Padrão Amoroso</p>
+          <p class="login-product">Mapa do Ciclo Amoroso</p>
         </div>
       </div>
       <h1>Entrar no painel</h1>
-      <p class="login-sub">Funil, esteira de leads e respostas — senha do Supabase.</p>
+      <p class="login-sub">Funil de 9 perguntas, 4 ciclos e esteira de leads.</p>
 
       <form id="login-form" action="javascript:void(0)" method="post" autocomplete="on">
         <label class="field" for="admin-password">
@@ -63,7 +63,7 @@
         <span class="side-logo">QI</span>
         <div>
           <strong>Quiz Intelligence</strong>
-          <small>Mapa do Padrão Amoroso</small>
+          <small>Mapa do Ciclo Amoroso</small>
         </div>
       </div>
       <nav class="side-nav">
@@ -89,7 +89,7 @@
     <div class="main">
       <header class="topbar">
         <div>
-          <h2 id="view-title">Funil do quiz</h2>
+          <h2 id="view-title">Funil do Ciclo Amoroso</h2>
           <p class="top-sub" id="status-line">—</p>
         </div>
         <div class="toolbar">
@@ -137,10 +137,10 @@
           <div class="card-head row-between">
             <div>
               <h3>Esteira de leads</h3>
-              <p>1 linha = 1 pessoa · colunas = perguntas · vazio = abandonou</p>
+              <p>1 linha = 1 pessoa · P1–P9 (A–D) · ciclo predominante · vazio = abandonou</p>
             </div>
             <div class="table-tools">
-              <input type="search" id="table-search" class="search-input" placeholder="Buscar lead, UTM, padrão…" />
+              <input type="search" id="table-search" class="search-input" placeholder="Buscar lead, UTM, ciclo…" />
               <select id="filter-device" class="select">
                 <option value="">Dispositivo</option>
                 <option value="mobile">Mobile</option>
@@ -153,6 +153,14 @@
                 <option value="in_quiz">in_quiz</option>
                 <option value="completed">completed</option>
                 <option value="checkout">checkout</option>
+                <option value="purchased">purchased</option>
+              </select>
+              <select id="filter-pattern" class="select">
+                <option value="">Ciclo</option>
+                <option value="A">A · Alerta de Abandono</option>
+                <option value="B">B · Autoabandono Afetivo</option>
+                <option value="C">C · Atração pelo Indisponível</option>
+                <option value="D">D · Proteção pela Distância</option>
               </select>
               <select id="filter-checkout" class="select">
                 <option value="">Checkout</option>
@@ -169,7 +177,7 @@
 
       <section id="view-answers" class="view">
         <article class="card">
-          <div class="card-head"><h3>Respostas mais marcadas</h3></div>
+          <div class="card-head"><h3>Respostas mais marcadas (A–D por pergunta)</h3></div>
           <div class="chip-row" id="answer-q-filters"></div>
           <div id="answers-list" class="answers-grid"></div>
         </article>
@@ -179,7 +187,7 @@
         <div class="kpi-row" id="perf-kpis"></div>
         <div class="grid-2">
           <article class="card">
-            <div class="card-head"><h3>Padrões gerados</h3></div>
+            <div class="card-head"><h3>Ciclos predominantes</h3></div>
             <canvas id="chart-patterns" height="180"></canvas>
             <div id="patterns-list" class="patterns-list"></div>
           </article>
