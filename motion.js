@@ -35,12 +35,15 @@
 
     /** Stagger em filhos com data-stagger */
     staggerIn(container, itemSelector) {
-      if (!container || this.prefersReduced()) return;
+      if (!container) return;
       const items = container.querySelectorAll(itemSelector || "[data-stagger]");
+      if (this.prefersReduced()) {
+        items.forEach((el) => el.classList.add("is-in"));
+        return;
+      }
       items.forEach((el, i) => {
         el.classList.remove("is-in");
         el.style.setProperty("--i", String(i));
-        // force reflow
         void el.offsetWidth;
         requestAnimationFrame(() => el.classList.add("is-in"));
       });

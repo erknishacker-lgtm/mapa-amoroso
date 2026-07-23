@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#faf6f1" />
+  <meta name="theme-color" content="#f3ebe3" />
   <meta name="description" content="Mapa do Ciclo Amoroso — quiz de autoconhecimento sobre repetições emocionais nos relacionamentos." />
   <title>Mapa do Ciclo Amoroso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <!-- Meta Pixel Code -->
   <script>
@@ -27,28 +30,51 @@
   src="https://www.facebook.com/tr?id=4427665624163520&ev=PageView&noscript=1"
   alt="" /></noscript>
 
+  <!-- Atmosfera de fundo (ICP: intimidade, calor, segurança) -->
+  <div class="atmosphere" aria-hidden="true">
+    <div class="atm-glow atm-glow-a"></div>
+    <div class="atm-glow atm-glow-b"></div>
+    <div class="atm-grain"></div>
+  </div>
+
   <div id="app">
 
     <!-- ABERTURA -->
     <section class="page page-open" id="page-open" data-page="open">
       <div class="wrap">
-        <header class="brand">
-          <svg class="brand-mark" viewBox="0 0 48 40" fill="none" aria-hidden="true">
-            <path d="M6 12c0-4 3-7 8-7h4v22H12c-4 0-6-2-6-6V12z" stroke="currentColor" stroke-width="1.6"/>
-            <path d="M42 12c0-4-3-7-8-7h-4v22h6c4 0 6-2 6-6V12z" stroke="currentColor" stroke-width="1.6"/>
-            <path d="M24 10v17" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M24 18.5c-1.2-2.4-4-2.4-4 0s4 5.5 4 5.5 4-3.1 4-5.5-2.8-2.4-4 0z" fill="#c45c4a"/>
-          </svg>
+        <header class="brand" data-stagger>
+          <div class="brand-orb">
+            <svg class="brand-mark" viewBox="0 0 48 40" fill="none" aria-hidden="true">
+              <path d="M6 12c0-4 3-7 8-7h4v22H12c-4 0-6-2-6-6V12z" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M42 12c0-4-3-7-8-7h-4v22h6c4 0 6-2 6-6V12z" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M24 10v17" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M24 18.5c-1.2-2.4-4-2.4-4 0s4 5.5 4 5.5 4-3.1 4-5.5-2.8-2.4-4 0z" fill="#c45c4a"/>
+            </svg>
+          </div>
           <p class="brand-name">Mapa do <strong>Ciclo Amoroso</strong></p>
         </header>
 
-        <h1 class="open-title" id="open-title">Por que relações que começam tão intensas acabam deixando tanta confusão?</h1>
-        <p class="open-subtitle" id="open-subtitle">Alguns relacionamentos mudam de rosto, mas repetem o mesmo roteiro.</p>
+        <p class="icp-mirror" data-stagger>
+          Para quem sente que a relação muda de rosto… mas o roteiro se repete.
+        </p>
 
-        <div class="open-support" id="open-support"></div>
-        <div class="chips" id="open-bullets"></div>
+        <div class="hyperframe open-frame" data-stagger>
+          <span class="hf-corner hf-tl" aria-hidden="true"></span>
+          <span class="hf-corner hf-tr" aria-hidden="true"></span>
+          <span class="hf-corner hf-bl" aria-hidden="true"></span>
+          <span class="hf-corner hf-br" aria-hidden="true"></span>
+          <h1 class="open-title" id="open-title">Por que relações que começam tão intensas acabam deixando tanta confusão?</h1>
+          <p class="open-subtitle" id="open-subtitle">Alguns relacionamentos mudam de rosto, mas repetem o mesmo roteiro.</p>
+        </div>
 
-        <button type="button" class="btn btn-primary btn-block" id="btn-start">DESCOBRIR MEU CICLO</button>
+        <div class="hyperframe open-support" id="open-support" data-stagger></div>
+        <div class="chips" id="open-bullets" data-stagger></div>
+
+        <div class="icp-strip" data-stagger>
+          <p>Sem cadastro · Sem diagnóstico · Só clareza para você</p>
+        </div>
+
+        <button type="button" class="btn btn-primary btn-block btn-glow" id="btn-start" data-sound="cta">DESCOBRIR MEU CICLO</button>
 
         <footer class="site-footer">
           <a href="privacy.html">Privacidade</a>
@@ -61,7 +87,7 @@
     <section class="page page-quiz is-hidden" id="page-quiz" data-page="quiz" hidden>
       <div class="quiz-progress" id="quiz-progress">
         <div class="quiz-progress-top">
-          <button type="button" class="btn-back" id="btn-back" aria-label="Voltar">← Voltar</button>
+          <button type="button" class="btn-back" id="btn-back" aria-label="Voltar" data-sound="soft">← Voltar</button>
           <span class="quiz-progress-label" id="quiz-progress-label">Pergunta 1 de 9</span>
         </div>
         <div class="progress-track">
@@ -69,7 +95,14 @@
         </div>
       </div>
       <div class="wrap">
-        <h1 class="quiz-question" id="quiz-question"></h1>
+        <div class="hyperframe question-frame">
+          <span class="hf-corner hf-tl" aria-hidden="true"></span>
+          <span class="hf-corner hf-tr" aria-hidden="true"></span>
+          <span class="hf-corner hf-bl" aria-hidden="true"></span>
+          <span class="hf-corner hf-br" aria-hidden="true"></span>
+          <p class="question-kicker">Responda com o que mais se repete — não com o “certo”</p>
+          <h1 class="quiz-question" id="quiz-question"></h1>
+        </div>
         <div class="opt-list" id="quiz-options" role="list"></div>
       </div>
     </section>
@@ -77,11 +110,15 @@
     <!-- NOME (após Q3) -->
     <section class="page page-name is-hidden" id="page-name" data-page="name" hidden>
       <div class="wrap">
-        <div class="gate-card">
+        <div class="hyperframe gate-card">
+          <span class="hf-corner hf-tl" aria-hidden="true"></span>
+          <span class="hf-corner hf-tr" aria-hidden="true"></span>
+          <span class="hf-corner hf-bl" aria-hidden="true"></span>
+          <span class="hf-corner hf-br" aria-hidden="true"></span>
           <h1 class="gate-title" id="name-title">Suas primeiras respostas já apontam para uma maneira específica de buscar segurança emocional.</h1>
           <p class="gate-ask" id="name-ask">Como prefere ser chamada?</p>
           <p class="gate-help" id="name-help">Usaremos seu primeiro nome apenas para personalizar o resultado.</p>
-          <label class="sr-only" for="input-name" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Primeiro nome</label>
+          <label class="sr-only" for="input-name">Primeiro nome</label>
           <input
             type="text"
             id="input-name"
@@ -92,8 +129,8 @@
             placeholder="Primeiro nome (opcional)"
             inputmode="text"
           />
-          <button type="button" class="btn btn-primary btn-block" id="btn-name-continue">CONTINUAR MINHA ANÁLISE</button>
-          <button type="button" class="btn btn-ghost btn-block" id="btn-name-skip">Prefiro não informar</button>
+          <button type="button" class="btn btn-primary btn-block btn-glow" id="btn-name-continue" data-sound="cta">CONTINUAR MINHA ANÁLISE</button>
+          <button type="button" class="btn btn-ghost btn-block" id="btn-name-skip" data-sound="soft">Prefiro não informar</button>
         </div>
       </div>
     </section>
@@ -101,10 +138,15 @@
     <!-- MID (após Q6) -->
     <section class="page page-mid is-hidden" id="page-mid" data-page="mid" hidden>
       <div class="wrap">
-        <div class="gate-card">
+        <div class="hyperframe gate-card mid-glow">
+          <span class="hf-corner hf-tl" aria-hidden="true"></span>
+          <span class="hf-corner hf-tr" aria-hidden="true"></span>
+          <span class="hf-corner hf-bl" aria-hidden="true"></span>
+          <span class="hf-corner hf-br" aria-hidden="true"></span>
+          <div class="mid-pulse" aria-hidden="true"></div>
           <h1 class="gate-title" id="mid-title">Identificamos uma repetição importante</h1>
           <div class="mid-body" id="mid-body"></div>
-          <button type="button" class="btn btn-primary btn-block" id="btn-mid-continue">CONTINUAR MINHA ANÁLISE</button>
+          <button type="button" class="btn btn-primary btn-block btn-glow" id="btn-mid-continue" data-sound="cta">CONTINUAR MINHA ANÁLISE</button>
         </div>
       </div>
     </section>
@@ -112,10 +154,18 @@
     <!-- PROCESSAMENTO -->
     <section class="page page-process is-hidden" id="page-process" data-page="process" hidden>
       <div class="wrap process-inner">
-        <div class="process-spinner" aria-hidden="true"></div>
-        <p class="process-msg" id="process-msg">Organizando suas respostas…</p>
-        <div class="process-dims" id="process-dims"></div>
-        <p class="process-done" id="process-done" hidden>Seu resultado está pronto.</p>
+        <div class="hyperframe process-frame">
+          <span class="hf-corner hf-tl" aria-hidden="true"></span>
+          <span class="hf-corner hf-tr" aria-hidden="true"></span>
+          <span class="hf-corner hf-bl" aria-hidden="true"></span>
+          <span class="hf-corner hf-br" aria-hidden="true"></span>
+          <div class="process-orb" aria-hidden="true">
+            <div class="process-spinner"></div>
+          </div>
+          <p class="process-msg" id="process-msg">Organizando suas respostas…</p>
+          <div class="process-dims" id="process-dims"></div>
+          <p class="process-done" id="process-done" hidden>Seu resultado está pronto.</p>
+        </div>
       </div>
     </section>
 
@@ -140,11 +190,12 @@
   <!-- Cookies -->
   <div class="cookie-banner" id="cookie-banner" hidden>
     <p>Usamos cookies e pixels de medição para entender o desempenho da página. Não enviamos suas respostas emocionais a anunciantes. Veja a <a href="privacy.html">política de privacidade</a>.</p>
-    <button type="button" class="btn btn-primary btn-block" id="btn-cookie-ok">Entendi</button>
+    <button type="button" class="btn btn-primary btn-block" id="btn-cookie-ok" data-sound="click">Entendi</button>
   </div>
 
   <script src="config.js"></script>
   <script src="data.js"></script>
+  <script src="sound.js"></script>
   <script src="motion.js"></script>
   <script src="pixel.js"></script>
   <script src="analytics.js"></script>

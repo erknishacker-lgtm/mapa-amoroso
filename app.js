@@ -15,6 +15,25 @@
     staggerIn: function () {},
     ripple: function () {},
   };
+  var Snd = window.MapaSound || {
+    click: function () {},
+    confirm: function () {},
+    cta: function () {},
+    soft: function () {},
+    chime: function () {},
+    unlock: function () {},
+  };
+
+  function playSound(kind) {
+    try {
+      if (Snd.unlock) Snd.unlock();
+      if (kind === "cta" && Snd.cta) Snd.cta();
+      else if (kind === "confirm" && Snd.confirm) Snd.confirm();
+      else if (kind === "soft" && Snd.soft) Snd.soft();
+      else if (kind === "chime" && Snd.chime) Snd.chime();
+      else if (Snd.click) Snd.click();
+    } catch (e) {}
+  }
   var Px = window.MapaPixel || {
     quizStart: function () {},
     quizProgress50: function () {},
@@ -235,9 +254,14 @@
     }
     if (ctaEl) ctaEl.textContent = D.open.cta;
     showPage("open");
+    requestAnimationFrame(function () {
+      var wrap = document.querySelector(".page-open .wrap");
+      if (wrap && M.staggerIn) M.staggerIn(wrap, "[data-stagger]");
+    });
   }
 
   function startQuiz() {
+    playSound("cta");
     Px.quizStart();
     Ax.start();
     state.qIndex = 0;
@@ -310,6 +334,7 @@
   function onSelectOption(key, btn, e) {
     if (state.advancing) return;
     state.advancing = true;
+    playSound("confirm");
 
     var q = D.questions[state.qIndex];
     state.answers[q.id] = key;
@@ -358,6 +383,7 @@
 
   function goBack() {
     if (state.advancing) return;
+    playSound("soft");
     var scr = state.screen;
 
     if (scr === "name") {
@@ -422,6 +448,7 @@
   }
 
   function continueFromName() {
+    playSound("cta");
     var raw = el.nameInput ? el.nameInput.value : "";
     state.name = (raw || "").trim().slice(0, 40);
     // Analytics interno pode guardar nome; Meta NÃO
@@ -459,6 +486,7 @@
   }
 
   function continueFromMid() {
+    playSound("cta");
     state.qIndex = 6; // Q7
     renderQuestion();
   }
@@ -466,6 +494,7 @@
   /* ─── processing ─── */
 
   function startProcessing() {
+    playSound("chime");
     showPage("process");
     if (el.processDone) el.processDone.hidden = true;
     if (el.processMsg) el.processMsg.textContent = D.processing[0];
@@ -508,6 +537,7 @@
         if (el.processDone) {
           el.processDone.hidden = false;
           el.processDone.textContent = "Seu resultado está pronto.";
+          playSound("chime");
         }
         window.setTimeout(function () {
           finishAndShowResult();
@@ -586,13 +616,18 @@
       .join("");
 
     root.innerHTML =
+      '<div class="hyperframe" style="margin-bottom:16px;text-align:center">' +
+      '<span class="hf-corner hf-tl" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-tr" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-bl" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-br" aria-hidden="true"></span>' +
       hello +
       "<h1 class=\"result-title\">" +
       pat.title +
       "</h1>" +
-      '<p class="result-desc">' +
+      '<p class="result-desc" style="margin-bottom:0">' +
       pat.description +
-      "</p>" +
+      "</p></div>" +
       '<div class="result-block"><h2>Como geralmente começa</h2><p>' +
       pat.starts +
       "</p></div>" +
@@ -615,12 +650,13 @@
       '<p class="result-bridge">' +
       D.offer.bridge +
       "</p>" +
-      '<button type="button" class="btn btn-primary btn-block" id="btn-to-offer">VER MEU MAPA COMPLETO</button>' +
+      '<button type="button" class="btn btn-primary btn-block btn-glow" id="btn-to-offer">VER MEU MAPA COMPLETO</button>' +
       "</div>";
 
     var btn = document.getElementById("btn-to-offer");
     if (btn) {
       btn.addEventListener("click", function () {
+        playSound("cta");
         renderOffer();
       });
     }
@@ -757,7 +793,11 @@
       '<p class="offer-bridge">' +
       D.offer.bridge +
       "</p>" +
-      '<div class="map-preview card">' +
+      '<div class="map-preview card hyperframe">' +
+      '<span class="hf-corner hf-tl" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-tr" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-bl" aria-hidden="true"></span>' +
+      '<span class="hf-corner hf-br" aria-hidden="true"></span>' +
       '<p class="map-preview-kicker">' +
       previewTitle +
       "</p>" +
@@ -794,7 +834,7 @@
       " dias conforme os termos da compra</li>" +
       "<li>Checkout seguro · Pix e cartão</li>" +
       "</ul>" +
-      '<button type="button" class="btn btn-primary btn-block" id="btn-checkout">' +
+      '<button type="button" class="btn btn-primary btn-block btn-glow" id="btn-checkout">' +
       D.offer.cta +
       "</button>" +
       "</div>" +
@@ -805,6 +845,7 @@
     var btn = document.getElementById("btn-checkout");
     if (btn) {
       btn.addEventListener("click", function () {
+        playSound("cta");
         goCheckout();
       });
     }
@@ -867,10 +908,42 @@
     var skip = document.getElementById("btn-name-skip");
     if (skip) {
       skip.addEventListener("click", function () {
+        playSound("soft");
         if (el.nameInput) el.nameInput.value = "";
         continueFromName();
       });
     }
+
+    var cookieOk = document.getElementById("btn-cookie-ok");
+    if (cookieOk) {
+      cookieOk.addEventListener("click", function () {
+        playSound("click");
+      });
+    }
+
+    // Delegação: qualquer [data-sound] que não tenha handler próprio
+    document.addEventListener(
+      "click",
+      function (e) {
+        var t = e.target && e.target.closest ? e.target.closest("[data-sound]") : null;
+        if (!t) return;
+        // CTAs principais já tocam no handler; evita double-fire em botões com id de fluxo
+        var id = t.id || "";
+        if (
+          id === "btn-start" ||
+          id === "btn-name-continue" ||
+          id === "btn-name-skip" ||
+          id === "btn-mid-continue" ||
+          id === "btn-back" ||
+          id === "btn-checkout" ||
+          id === "btn-to-offer"
+        ) {
+          return;
+        }
+        playSound(t.getAttribute("data-sound") || "click");
+      },
+      true
+    );
   }
 
   /* ─── boot ─── */
