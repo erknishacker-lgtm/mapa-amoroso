@@ -16,7 +16,7 @@ npx serve .
 - Build Command: (vazio)
 - Output Directory: `.`
 
-Checkout: https://lastlink.com/p/C53821E2C/checkout-payment/
+Checkout: https://checkout.perfectpay.com.br/pay/PPU38CQEJJH
 
 ## Analytics estilo Enlead (1 linha = 1 pessoa)
 

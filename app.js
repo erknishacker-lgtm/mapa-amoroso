@@ -643,7 +643,7 @@
   /* ─── offer ─── */
 
   function buildCheckoutUrl() {
-    var url = C.checkoutUrl || "https://lastlink.com/p/C53821E2C/checkout-payment/";
+    var url = C.checkoutUrl || "https://checkout.perfectpay.com.br/pay/PPU38CQEJJH";
     try {
       var u = new URL(url);
       // preserva UTMs

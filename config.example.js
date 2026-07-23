@@ -8,7 +8,7 @@ window.MAPA_CONFIG = {
   priceAnchor: 79.9,
   showPriceAnchor: true,
   currency: "BRL",
-  checkoutUrl: "https://lastlink.com/p/SEU_CHECKOUT/checkout-payment/",
+  checkoutUrl: "https://checkout.perfectpay.com.br/pay/SEU_CODIGO",
   orderBumpPrice: 14.9,
   upsellPrice: 59.9,
   upsellCheckoutUrl: "",

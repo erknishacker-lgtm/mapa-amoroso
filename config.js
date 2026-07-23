@@ -8,8 +8,8 @@ window.MAPA_CONFIG = {
   priceAnchor: 79.9, // null para esconder ancoragem
   showPriceAnchor: true,
   currency: "BRL",
-  checkoutUrl: "https://lastlink.com/p/C53821E2C/checkout-payment/",
-  // Order bump (Diário R$14,90) configurado no checkout Lastlink — não pré-marcar
+  checkoutUrl: "https://checkout.perfectpay.com.br/pay/PPU38CQEJJH",
+  // Order bump (Diário R$14,90) configurado no checkout PerfectPay — não pré-marcar
   orderBumpPrice: 14.9,
   // Upsell pós-compra (Plano 28 dias) — URL dedicada quando existir
   upsellPrice: 59.9,
