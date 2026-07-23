@@ -743,50 +743,109 @@
     if (bonuses && bonuses.items && bonuses.items.length) {
       var bonusCards = bonuses.items
         .map(function (b) {
+          var titles = (b.bookTitle || b.name).split("\n");
+          var bookLines = titles
+            .map(function (line) {
+              return "<span>" + line + "</span>";
+            })
+            .join("");
           return (
-            '<article class="bonus-card">' +
-            '<div class="bonus-card-top">' +
-            '<span class="bonus-num">Bônus ' +
+            '<article class="bpack-card bpack-card--' +
+            (b.visual || "bath") +
+            '">' +
+            '<div class="bpack-card-label">BÔNUS ' +
             b.num +
-            "</span>" +
-            '<span class="bonus-value">valor percebido ' +
-            b.value +
-            "</span>" +
             "</div>" +
-            "<h3 class=\"bonus-name\">" +
+            '<div class="bpack-mock" aria-hidden="true">' +
+            '<div class="bpack-book bpack-book--' +
+            (b.visual || "bath") +
+            '">' +
+            '<div class="bpack-book-spine"></div>' +
+            '<div class="bpack-book-face">' +
+            '<p class="bpack-book-title">' +
+            bookLines +
+            "</p>" +
+            '<p class="bpack-book-sub">' +
+            (b.bookSub || "") +
+            "</p>" +
+            '<div class="bpack-book-icon"></div>' +
+            "</div></div>" +
+            '<div class="bpack-mock-glow"></div>' +
+            "</div>" +
+            "<h3 class=\"bpack-name\">" +
             b.name +
             "</h3>" +
-            (b.alt ? '<p class="bonus-alt">' + b.alt + "</p>" : "") +
-            '<p class="bonus-desc">' +
+            (b.alt ? '<p class="bpack-alt">' + b.alt + "</p>" : "") +
+            '<p class="bpack-desc">' +
             b.desc +
             "</p>" +
-            '<span class="bonus-included">Incluso no seu acesso</span>' +
+            '<p class="bpack-value">Valor percebido ' +
+            b.value +
+            "</p>" +
             "</article>"
           );
         })
         .join("");
+
+      var trusts = (bonuses.trusts || [])
+        .map(function (t) {
+          return (
+            '<div class="bpack-trust-item">' +
+            '<span class="bpack-trust-ico bpack-trust-ico--' +
+            (t.icon || "shield") +
+            '" aria-hidden="true"></span>' +
+            "<span>" +
+            t.label +
+            "</span></div>"
+          );
+        })
+        .join("");
+
       bonusHtml =
-        '<section class="bonus-section" aria-label="Bônus inclusos">' +
-        "<h2 class=\"bonus-section-title\">" +
-        bonuses.title +
+        '<section class="bpack" aria-label="Bônus exclusivos">' +
+        '<div class="bpack-inner">' +
+        '<div class="bpack-badge">' +
+        '<span class="bpack-badge-ico" aria-hidden="true">🎁</span>' +
+        "<span>" +
+        (bonuses.badge || "BÔNUS EXCLUSIVOS") +
+        "</span></div>" +
+        '<div class="bpack-seal" aria-hidden="true">' +
+        "<span>BÔNUS<br/>EXCLUSIVOS</span></div>" +
+        "<h2 class=\"bpack-title\">" +
+        (bonuses.title || "Ao desbloquear seu Mapa Completo") +
         "</h2>" +
-        '<p class="bonus-section-sub">' +
-        bonuses.subtitle +
+        '<p class="bpack-highlight">💛 ' +
+        (bonuses.highlight || "Você recebe tudo isso sem custo adicional!") +
+        " 💛</p>" +
+        '<p class="bpack-sub">' +
+        (bonuses.subtitle || "") +
         "</p>" +
-        '<div class="bonus-list">' +
+        '<div class="bpack-grid">' +
         bonusCards +
         "</div>" +
-        '<div class="bonus-total">' +
-        "<span>" +
-        bonuses.totalLabel +
-        '</span><strong>' +
-        bonuses.totalValue +
+        '<div class="bpack-banner">' +
+        '<div class="bpack-banner-left">' +
+        '<span class="bpack-banner-ico" aria-hidden="true">🎁</span>' +
+        "<div><small>" +
+        (bonuses.totalLabel || "Valor total dos bônus") +
+        '</small><strong class="bpack-banner-price">' +
+        (bonuses.totalValue || "R$ 111,00") +
+        "</strong></div></div>" +
+        '<div class="bpack-banner-right">' +
+        "<strong>" +
+        (bonuses.ctaBanner || "Hoje você recebe tudo incluso!") +
         "</strong>" +
-        "</div>" +
-        '<p class="bonus-note">' +
-        bonuses.note +
+        "<span>" +
+        (bonuses.ctaSub || "Sem custo adicional") +
+        "</span></div></div>" +
+        (trusts ? '<div class="bpack-trusts">' + trusts + "</div>" : "") +
+        (bonuses.footer
+          ? '<p class="bpack-footer">' + bonuses.footer + "</p>"
+          : "") +
+        '<p class="bpack-note">' +
+        (bonuses.note || "") +
         "</p>" +
-        "</section>";
+        "</div></section>";
     }
 
     root.innerHTML =
