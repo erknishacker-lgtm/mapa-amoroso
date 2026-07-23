@@ -702,6 +702,57 @@
     var name = greetName();
     var previewTitle = name ? name + ", seu mapa completo" : "Seu mapa completo";
 
+    var bonuses = D.offer.bonuses;
+    var bonusHtml = "";
+    if (bonuses && bonuses.items && bonuses.items.length) {
+      var bonusCards = bonuses.items
+        .map(function (b) {
+          return (
+            '<article class="bonus-card">' +
+            '<div class="bonus-card-top">' +
+            '<span class="bonus-num">Bônus ' +
+            b.num +
+            "</span>" +
+            '<span class="bonus-value">valor percebido ' +
+            b.value +
+            "</span>" +
+            "</div>" +
+            "<h3 class=\"bonus-name\">" +
+            b.name +
+            "</h3>" +
+            (b.alt ? '<p class="bonus-alt">' + b.alt + "</p>" : "") +
+            '<p class="bonus-desc">' +
+            b.desc +
+            "</p>" +
+            '<span class="bonus-included">Incluso no seu acesso</span>' +
+            "</article>"
+          );
+        })
+        .join("");
+      bonusHtml =
+        '<section class="bonus-section" aria-label="Bônus inclusos">' +
+        "<h2 class=\"bonus-section-title\">" +
+        bonuses.title +
+        "</h2>" +
+        '<p class="bonus-section-sub">' +
+        bonuses.subtitle +
+        "</p>" +
+        '<div class="bonus-list">' +
+        bonusCards +
+        "</div>" +
+        '<div class="bonus-total">' +
+        "<span>" +
+        bonuses.totalLabel +
+        '</span><strong>' +
+        bonuses.totalValue +
+        "</strong>" +
+        "</div>" +
+        '<p class="bonus-note">' +
+        bonuses.note +
+        "</p>" +
+        "</section>";
+    }
+
     root.innerHTML =
       '<p class="offer-bridge">' +
       D.offer.bridge +
@@ -723,6 +774,7 @@
       '<span class="lock-badge">Conteúdo completo no mapa</span>' +
       "</div>" +
       "</div>" +
+      bonusHtml +
       "<h1 class=\"offer-title\">" +
       D.offer.title +
       "</h1>" +

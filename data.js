@@ -262,5 +262,36 @@ window.MAPA_DATA = {
     cta: "QUERO ACESSAR MEU MAPA COMPLETO",
     disclaimer:
       "Material educativo de autoconhecimento. Não realiza diagnóstico psicológico e não substitui acompanhamento profissional.",
+    bonuses: {
+      title: "E ainda leva 3 bônus exclusivos",
+      subtitle:
+        "Junto com o Mapa Completo, você recebe três cartilhas práticas para usar nos dias em que a confusão ou o impulso voltam.",
+      totalLabel: "Valor percebido dos bônus",
+      totalValue: "R$ 111",
+      note: "Inclusos sem custo adicional na sua compra. Valores de referência do que você recebe — não são preços anteriores de venda avulsa.",
+      items: [
+        {
+          num: "01",
+          name: "Ritual de Limpeza e Renovação Emocional",
+          alt: "Banho de Renovação Amorosa",
+          desc: "Guia de 15 minutos com banho aromático (ou alternativa), respiração, escrita de encerramento e compromisso de recomeço.",
+          value: "R$ 27",
+        },
+        {
+          num: "02",
+          name: "Ritual de Desapego da Relação Confusa",
+          alt: "Ritual de Corte da Confusão Emocional",
+          desc: "Realidade × expectativa, carta que não precisa ser enviada, gatilhos, plano de 7 dias e checklist de saudade vs. possibilidade.",
+          value: "R$ 37",
+        },
+        {
+          num: "03",
+          name: "Kit de Proteção Emocional para Dias de Recaída",
+          alt: "Escudo de Proteção Emocional",
+          desc: "Roteiros de pausa, checklist de 5 minutos, cartão de clareza, mensagens de limite e plano de emergência de 24 horas.",
+          value: "R$ 47",
+        },
+      ],
+    },
   },
 };

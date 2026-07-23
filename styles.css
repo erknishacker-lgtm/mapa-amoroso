@@ -811,6 +811,137 @@ body {
   border: 1px solid var(--line);
 }
 
+/* ── bônus na oferta ── */
+.bonus-section {
+  margin: 0 0 24px;
+  padding: 18px 0 4px;
+}
+
+.bonus-section-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 4.6vw, 1.4rem);
+  color: var(--wine);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.bonus-section-sub {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.bonus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.bonus-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px 14px 12px;
+  box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--terracotta);
+}
+
+.bonus-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.bonus-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+  background: #fdf4f1;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.bonus-value {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.bonus-name {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: var(--wine);
+  font-weight: 700;
+  line-height: 1.3;
+  font-family: var(--font);
+}
+
+.bonus-alt {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.bonus-desc {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.bonus-included {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--terracotta-dark);
+  background: #fdf4f1;
+  border: 1px solid #eccbc3;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.bonus-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #6b2d3c, #8a3d4e);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.bonus-total span {
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.bonus-total strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.bonus-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.4;
+}
+
 .offer-title {
   margin: 0 0 12px;
   font-family: var(--font-display);
