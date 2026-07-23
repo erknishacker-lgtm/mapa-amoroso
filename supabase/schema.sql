@@ -1,9 +1,13 @@
 -- ============================================================
--- Mapa do Padrão Amoroso — Tracking estilo Enlead
--- SQL Editor → cole tudo → Run
+-- Mapa do Padrão Amoroso — Tracking Enlead (IDEMPOTENTE)
+-- Cole TUDO no SQL Editor e rode de uma vez
+-- Corrige instalação antiga (analytics_events sem lead_id)
 -- ============================================================
 
--- 1) Uma LINHA por pessoa (esteira de respostas)
+-- 0) Remove função antiga (evita conflito de retorno)
+drop function if exists public.admin_analytics(text, timestamptz, timestamptz);
+
+-- 1) LINHA POR PESSOA (esteira)
 create table if not exists public.quiz_leads (
   lead_id text primary key,
   session_id text,
@@ -12,10 +16,8 @@ create table if not exists public.quiz_leads (
   last_seen_at timestamptz not null default now(),
   duration_seconds int,
   status text not null default 'started',
-  -- started | profile | in_quiz | completed | checkout
   current_step int not null default 0,
   max_step_reached int not null default 0,
-  -- geo / device
   ip text,
   country text,
   region text,
@@ -25,7 +27,6 @@ create table if not exists public.quiz_leads (
   browser text,
   language text,
   user_agent text,
-  -- aquisição
   referrer text,
   landing_url text,
   utm_source text,
@@ -38,12 +39,9 @@ create table if not exists public.quiz_leads (
   ttclid text,
   fbc text,
   fbp text,
-  -- perfil no quiz
   name text,
   sign text,
-  -- respostas: { "q1": { "labels": ["..."], "indices": [0,1], "at": "ISO" }, ... }
   answers jsonb not null default '{}'::jsonb,
-  -- passos tocados: { "landing": true, "start": true, "q1": true, ... }
   steps jsonb not null default '{}'::jsonb,
   pattern_id text,
   pattern_name text,
@@ -55,7 +53,21 @@ create index if not exists quiz_leads_started_at_idx on public.quiz_leads (start
 create index if not exists quiz_leads_status_idx on public.quiz_leads (status);
 create index if not exists quiz_leads_max_step_idx on public.quiz_leads (max_step_reached);
 
--- 2) Log fino de eventos (opcional / detalhe)
+-- 2) LOG DE EVENTOS
+-- Se a tabela antiga existir SEM lead_id, recriamos de forma segura
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'analytics_events'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'analytics_events' and column_name = 'lead_id'
+  ) then
+    drop table public.analytics_events cascade;
+  end if;
+end $$;
+
 create table if not exists public.analytics_events (
   id uuid primary key default gen_random_uuid(),
   lead_id text,
@@ -70,10 +82,28 @@ create table if not exists public.analytics_events (
   created_at timestamptz not null default now()
 );
 
+-- Garante colunas se a tabela já existia com schema parcial
+alter table public.analytics_events add column if not exists lead_id text;
+alter table public.analytics_events add column if not exists session_id text;
+alter table public.analytics_events add column if not exists event_type text;
+alter table public.analytics_events add column if not exists question_id text;
+alter table public.analytics_events add column if not exists option_ids int[] default '{}';
+alter table public.analytics_events add column if not exists option_labels text[] default '{}';
+alter table public.analytics_events add column if not exists step_index int;
+alter table public.analytics_events add column if not exists pattern_id text;
+alter table public.analytics_events add column if not exists meta jsonb not null default '{}'::jsonb;
+alter table public.analytics_events add column if not exists created_at timestamptz not null default now();
+
+-- session_id / event_type podem ter ficado null em rows antigas; preenche default se vazio
+update public.analytics_events set session_id = coalesce(session_id, 'legacy') where session_id is null;
+update public.analytics_events set event_type = coalesce(event_type, 'unknown') where event_type is null;
+
 create index if not exists analytics_events_created_at_idx on public.analytics_events (created_at desc);
 create index if not exists analytics_events_lead_idx on public.analytics_events (lead_id);
 create index if not exists analytics_events_type_idx on public.analytics_events (event_type);
+create index if not exists analytics_events_session_idx on public.analytics_events (session_id);
 
+-- 3) SENHA ADMIN
 create table if not exists public.app_settings (
   key text primary key,
   value text not null
@@ -83,7 +113,7 @@ insert into public.app_settings (key, value)
 values ('admin_password', 'mapa2026')
 on conflict (key) do nothing;
 
--- RLS
+-- 4) RLS
 alter table public.quiz_leads enable row level security;
 alter table public.analytics_events enable row level security;
 alter table public.app_settings enable row level security;
@@ -104,9 +134,7 @@ create policy "anon_insert_events"
   on public.analytics_events for insert to anon, authenticated
   with check (true);
 
--- ============================================================
--- RPC Admin (senha no servidor)
--- ============================================================
+-- 5) FUNÇÃO DO PAINEL
 create or replace function public.admin_analytics(
   p_password text,
   p_from timestamptz default (now() - interval '30 days'),
@@ -143,7 +171,6 @@ begin
         round(avg(duration_seconds) filter (where duration_seconds is not null), 0) as avg_duration_sec
       from leads
     ),
-    -- % que passou de cada step (viu ou respondeu a pergunta N)
     step_funnel as (
       select
         s.step_key,
@@ -154,7 +181,7 @@ begin
             case
               when s.step_key = 'landing' then true
               when s.step_key = 'start' then (l.steps ? 'start') or l.max_step_reached >= 0
-              when s.step_key = 'profile' then (l.steps ? 'profile') or l.max_step_reached >= 0
+              when s.step_key = 'profile' then (l.steps ? 'profile')
               when s.step_key like 'q%' then
                 (l.steps ? s.step_key)
                 or (l.answers ? s.step_key)
@@ -211,7 +238,6 @@ begin
       group by 1
       order by 1
     ),
-    -- ranking de respostas por pergunta
     answer_rows as (
       select
         qkey as question_id,
@@ -291,6 +317,3 @@ end;
 $$;
 
 grant execute on function public.admin_analytics(text, timestamptz, timestamptz) to anon, authenticated;
-
--- Trocar senha:
--- update public.app_settings set value = 'sua_senha' where key = 'admin_password';
