@@ -4,96 +4,194 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>Admin · Mapa Amoroso</title>
+  <title>Quiz Intelligence · Mapa Amoroso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <div id="login-screen" class="login-screen">
+  <!-- LOGIN -->
+  <div id="login-screen" class="shell-login">
+    <div class="login-orb" aria-hidden="true"></div>
     <div class="login-card">
-      <div class="login-brand">MAPA DO PADRÃO AMOROSO</div>
-      <h1>Painel de tracking</h1>
-      <p class="login-help">Senha: <code>mapa2026</code></p>
-
+      <div class="login-mark">QI</div>
+      <p class="login-kicker">Quiz Intelligence</p>
+      <h1>Painel do funil</h1>
+      <p class="login-sub">Acompanhe cada lead na esteira de perguntas — abandono, respostas e checkout.</p>
       <label class="field" for="admin-password">
         <span>Senha</span>
-        <input id="admin-password" name="password" type="password" value="" autocomplete="current-password" placeholder="mapa2026" />
+        <input id="admin-password" type="password" placeholder="mapa2026" autocomplete="current-password" />
       </label>
-
-      <button type="button" class="btn-primary" id="btn-login">Abrir painel</button>
-      <p id="login-error" class="login-error" style="display:none"></p>
-      <p id="login-debug" class="muted" style="margin-top:12px;font-size:0.8rem;word-break:break-all"></p>
+      <button type="button" class="btn-glow" id="btn-login">Entrar no painel</button>
+      <p id="login-error" class="login-error" hidden></p>
+      <p id="login-debug" class="login-debug"></p>
     </div>
   </div>
 
-  <div id="dash" class="dash" style="display:none">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Analytics</p>
-        <h1>Comportamento no quiz</h1>
+  <!-- APP -->
+  <div id="app" class="app" hidden>
+    <aside class="sidebar">
+      <div class="side-brand">
+        <span class="side-logo">QI</span>
+        <div>
+          <strong>Quiz Intelligence</strong>
+          <small>Mapa do Padrão Amoroso</small>
+        </div>
       </div>
-      <div class="filters">
-        <button type="button" class="chip is-active" data-range="7">7 dias</button>
-        <button type="button" class="chip" data-range="today">Hoje</button>
-        <button type="button" class="chip" data-range="30">30 dias</button>
-        <label class="field-inline"><span>De</span><input type="date" id="date-from" /></label>
-        <label class="field-inline"><span>Até</span><input type="date" id="date-to" /></label>
-        <button type="button" class="btn-primary btn-sm" id="btn-refresh">Atualizar</button>
+      <nav class="side-nav">
+        <button type="button" class="nav-item is-active" data-view="funnel">
+          <span class="nav-ico">◈</span> Funil
+        </button>
+        <button type="button" class="nav-item" data-view="table">
+          <span class="nav-ico">▦</span> Esteira de leads
+        </button>
+        <button type="button" class="nav-item" data-view="answers">
+          <span class="nav-ico">◎</span> Respostas
+        </button>
+        <button type="button" class="nav-item" data-view="perf">
+          <span class="nav-ico">△</span> Performance
+        </button>
+      </nav>
+      <div class="side-foot">
+        <button type="button" class="btn-ghost" id="btn-export">Exportar CSV</button>
         <button type="button" class="btn-ghost" id="btn-logout">Sair</button>
       </div>
-    </header>
+    </aside>
 
-    <p class="status" id="status-line">—</p>
-    <section class="kpis" id="kpis"></section>
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="view-title">Funil do quiz</h2>
+          <p class="top-sub" id="status-line">Carregando…</p>
+        </div>
+        <div class="toolbar">
+          <div class="seg">
+            <button type="button" class="seg-btn" data-range="today">Hoje</button>
+            <button type="button" class="seg-btn is-active" data-range="7">7d</button>
+            <button type="button" class="seg-btn" data-range="30">30d</button>
+          </div>
+          <input type="date" id="date-from" class="date-input" />
+          <span class="date-sep">→</span>
+          <input type="date" id="date-to" class="date-input" />
+          <button type="button" class="btn-glow btn-sm" id="btn-refresh">Atualizar</button>
+        </div>
+      </header>
 
-    <section class="panel panel-hero">
-      <div class="panel-head">
-        <h2>% que chegou em cada passo</h2>
-        <p>Gargalo fica em destaque vermelho</p>
-      </div>
-      <div class="step-grid" id="step-grid"></div>
-      <div class="chart-box"><canvas id="chart-funnel" height="100"></canvas></div>
-    </section>
+      <!-- FUNIL -->
+      <section id="view-funnel" class="view is-active">
+        <div class="kpi-row" id="kpis"></div>
 
-    <div class="split">
-      <section class="panel">
-        <div class="panel-head"><h2>Por dia</h2></div>
-        <canvas id="chart-day" height="150"></canvas>
+        <div class="grid-funnel">
+          <article class="card card-wide">
+            <div class="card-head">
+              <h3>Jornada completa</h3>
+              <p>Absoluto · % do total · conversão da etapa</p>
+            </div>
+            <div class="funnel-rail" id="funnel-rail"></div>
+          </article>
+          <article class="card">
+            <div class="card-head">
+              <h3>Destaques</h3>
+            </div>
+            <ul class="insight-list" id="insight-list"></ul>
+          </article>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head"><h3>Volume por dia</h3></div>
+            <canvas id="chart-day" height="160"></canvas>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Volume por hora</h3><p>America/São Paulo</p></div>
+            <canvas id="chart-hour" height="160"></canvas>
+          </article>
+        </div>
       </section>
-      <section class="panel">
-        <div class="panel-head"><h2>Por hora (SP)</h2></div>
-        <canvas id="chart-hour" height="150"></canvas>
+
+      <!-- ESTEIRA -->
+      <section id="view-table" class="view">
+        <article class="card card-flush">
+          <div class="card-head row-between">
+            <div>
+              <h3>Esteira de leads</h3>
+              <p>1 linha = 1 pessoa · colunas = perguntas · vazio = parou</p>
+            </div>
+            <div class="table-tools">
+              <input type="search" id="table-search" class="search-input" placeholder="Buscar lead, UTM, padrão…" />
+              <select id="filter-device" class="select">
+                <option value="">Dispositivo</option>
+                <option value="mobile">Mobile</option>
+                <option value="desktop">Desktop</option>
+                <option value="tablet">Tablet</option>
+              </select>
+              <select id="filter-status" class="select">
+                <option value="">Status</option>
+                <option value="started">started</option>
+                <option value="in_quiz">in_quiz</option>
+                <option value="completed">completed</option>
+                <option value="checkout">checkout</option>
+              </select>
+              <select id="filter-checkout" class="select">
+                <option value="">Checkout</option>
+                <option value="yes">Comprou / clicou</option>
+                <option value="no">Não clicou</option>
+              </select>
+            </div>
+          </div>
+          <div class="sheet-wrap">
+            <table class="sheet" id="leads-sheet">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- RESPOSTAS -->
+      <section id="view-answers" class="view">
+        <article class="card">
+          <div class="card-head">
+            <h3>O que mais marcaram</h3>
+            <p>Ranking por pergunta</p>
+          </div>
+          <div class="chip-row" id="answer-q-filters"></div>
+          <div id="answers-list" class="answers-grid"></div>
+        </article>
+      </section>
+
+      <!-- PERF -->
+      <section id="view-perf" class="view">
+        <div class="kpi-row" id="perf-kpis"></div>
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head"><h3>Padrões gerados</h3></div>
+            <canvas id="chart-patterns" height="180"></canvas>
+            <div id="patterns-list" class="patterns-list"></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>Conversão por dispositivo / UTM</h3></div>
+            <div id="perf-breakdown" class="breakdown"></div>
+          </article>
+        </div>
       </section>
     </div>
-
-    <section class="panel">
-      <div class="panel-head"><h2>Respostas mais marcadas</h2></div>
-      <div class="answer-filters" id="answer-q-filters"></div>
-      <div id="answers-list" class="answers-list"></div>
-    </section>
-
-    <section class="panel panel-sheet">
-      <div class="panel-head">
-        <h2>Esteira de leads</h2>
-        <p>Cada linha = uma pessoa. Vazio = abandonou.</p>
-      </div>
-      <div class="sheet-scroll">
-        <table class="sheet" id="leads-sheet">
-          <thead></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><h2>Padrões</h2></div>
-      <div class="split-inner">
-        <canvas id="chart-patterns" height="160"></canvas>
-        <div id="patterns-list" class="patterns-list"></div>
-      </div>
-    </section>
   </div>
 
-  <!-- Config fixa no admin (não depende de path) -->
+  <!-- DRAWER LEAD -->
+  <div id="drawer-bg" class="drawer-bg" hidden></div>
+  <aside id="drawer" class="drawer" hidden>
+    <div class="drawer-head">
+      <div>
+        <p class="eyebrow">Lead</p>
+        <h3 id="drawer-title">—</h3>
+      </div>
+      <button type="button" class="icon-btn" id="drawer-close" aria-label="Fechar">✕</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
+
   <script>
     window.MAPA_CONFIG = {
       supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
@@ -104,144 +202,5 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="../data.js"></script>
   <script src="admin.js"></script>
-  <script>
-    // Garante binding do botão mesmo se algo falhar no admin.js
-    (function () {
-      function showErr(msg) {
-        var e = document.getElementById("login-error");
-        if (!e) return;
-        e.style.display = "block";
-        e.textContent = msg;
-      }
-      function debug(msg) {
-        var d = document.getElementById("login-debug");
-        if (d) d.textContent = msg;
-      }
-
-      window.__doAdminLogin = async function () {
-        var input = document.getElementById("admin-password");
-        var btn = document.getElementById("btn-login");
-        var pass = (input && input.value ? input.value : "").trim();
-        if (!pass) {
-          showErr("Digite a senha mapa2026");
-          return;
-        }
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = "Entrando…";
-        }
-        showErr("");
-        document.getElementById("login-error").style.display = "none";
-
-        var cfg = window.MAPA_CONFIG || {};
-        var url = (cfg.supabaseUrl || "").replace(/\/$/, "");
-        var key = cfg.supabaseAnonKey || "";
-        debug("URL: " + url + " | key: " + (key ? key.slice(0, 18) + "…" : "VAZIA"));
-
-        try {
-          if (!url || !key) throw new Error("Config Supabase vazia no admin.");
-
-          var from = document.getElementById("date-from");
-          var to = document.getElementById("date-to");
-          // datas padrão se vazias
-          if (from && !from.value) {
-            var d = new Date();
-            d.setDate(d.getDate() - 6);
-            from.value = d.toISOString().slice(0, 10);
-          }
-          if (to && !to.value) {
-            to.value = new Date().toISOString().slice(0, 10);
-          }
-
-          var res = await fetch(url + "/rest/v1/rpc/admin_analytics", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: key,
-              Authorization: "Bearer " + key
-            },
-            body: JSON.stringify({
-              p_password: pass,
-              p_from: (from && from.value ? from.value : "2020-01-01") + "T00:00:00-03:00",
-              p_to: (to && to.value ? to.value : "2099-12-31") + "T23:59:59-03:00"
-            })
-          });
-
-          var text = await res.text();
-          debug("HTTP " + res.status + " · " + text.slice(0, 180));
-
-          if (!res.ok) {
-            if (/UNAUTHORIZED|42501/i.test(text)) {
-              throw new Error("Senha recusada pelo Supabase. Rode o arquivo supabase/fix_admin.sql no SQL Editor.");
-            }
-            if (/Could not find the function|PGRST202/i.test(text)) {
-              throw new Error("Função admin_analytics não existe. Rode supabase/fix_admin.sql");
-            }
-            if (/quiz_leads|PGRST205/i.test(text)) {
-              throw new Error("Tabela quiz_leads não existe. Rode supabase/schema.sql e depois fix_admin.sql");
-            }
-            throw new Error("Erro " + res.status + ": " + text.slice(0, 160));
-          }
-
-          var data = JSON.parse(text);
-          try { sessionStorage.setItem("mapa_admin_pass", pass); } catch (e) {}
-
-          // Abre painel
-          document.getElementById("login-screen").style.display = "none";
-          document.getElementById("dash").style.display = "block";
-
-          // Entrega dados pro admin.js se existir
-          if (typeof window.__adminRender === "function") {
-            window.__adminRender(data);
-          } else if (typeof window.__adminLoad === "function") {
-            window.__adminLoad();
-          } else {
-            document.getElementById("status-line").textContent =
-              "Login OK · " + ((data.leads && data.leads.length) || 0) + " leads. Se os gráficos não aparecerem, recarregue a página.";
-            // render mínimo de KPIs sem admin.js
-            var t = data.totals || {};
-            document.getElementById("kpis").innerHTML =
-              '<div class="kpi"><span>Leads</span><strong>' + (t.leads || 0) + '</strong></div>' +
-              '<div class="kpi"><span>Começaram</span><strong>' + (t.started || 0) + '</strong></div>' +
-              '<div class="kpi"><span>Terminaram</span><strong>' + (t.completed || 0) + '</strong></div>' +
-              '<div class="kpi is-hot"><span>Checkout</span><strong>' + (t.checkouts || 0) + '</strong></div>';
-          }
-        } catch (err) {
-          showErr(err.message || String(err));
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = "Abrir painel";
-          }
-        }
-      };
-
-      function bind() {
-        var btn = document.getElementById("btn-login");
-        var input = document.getElementById("admin-password");
-        if (btn) {
-          btn.onclick = function (e) {
-            e.preventDefault();
-            window.__doAdminLogin();
-          };
-        }
-        if (input) {
-          input.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              window.__doAdminLogin();
-            }
-          });
-        }
-        debug("Botão pronto. Digite mapa2026 e clique Abrir painel.");
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bind);
-      } else {
-        bind();
-      }
-    })();
-  </script>
 </body>
 </html>
