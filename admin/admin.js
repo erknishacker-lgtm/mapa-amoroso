@@ -108,21 +108,45 @@
   function chartOpts(legend) {
     return {
       responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: "index", intersect: false },
       plugins: {
         legend: {
           display: !!legend,
-          labels: { color: "#8b95a8", boxWidth: 10, font: { family: "DM Sans" } },
+          position: "bottom",
+          labels: {
+            color: "#a1a8b8",
+            boxWidth: 8,
+            boxHeight: 8,
+            usePointStyle: true,
+            pointStyle: "circle",
+            padding: 16,
+            font: { family: "DM Sans", size: 11, weight: "500" },
+          },
+        },
+        tooltip: {
+          backgroundColor: "rgba(15,18,25,0.95)",
+          titleColor: "#f7f8fc",
+          bodyColor: "#a1a8b8",
+          borderColor: "rgba(255,255,255,0.08)",
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          titleFont: { family: "DM Sans", weight: "600" },
+          bodyFont: { family: "DM Sans" },
         },
       },
       scales: {
         x: {
-          ticks: { color: "#8b95a8", maxRotation: 0 },
-          grid: { color: "rgba(255,255,255,0.04)" },
+          ticks: { color: "#6b7289", maxRotation: 0, font: { size: 10, family: "DM Sans" } },
+          grid: { color: "rgba(255,255,255,0.04)", drawBorder: false },
+          border: { display: false },
         },
         y: {
           beginAtZero: true,
-          ticks: { color: "#8b95a8", precision: 0 },
-          grid: { color: "rgba(255,255,255,0.04)" },
+          ticks: { color: "#6b7289", precision: 0, font: { size: 10, family: "DM Sans" } },
+          grid: { color: "rgba(255,255,255,0.04)", drawBorder: false },
+          border: { display: false },
         },
       },
     };
@@ -799,7 +823,7 @@
     document.querySelectorAll(".view").forEach(function (v) {
       v.classList.toggle("is-active", v.id === "view-" + name);
     });
-    document.querySelectorAll(".nav-item").forEach(function (b) {
+    document.querySelectorAll(".nav-item, .mobile-nav .nav-item").forEach(function (b) {
       b.classList.toggle("is-active", b.getAttribute("data-view") === name);
     });
     var titles = {
@@ -808,7 +832,7 @@
       answers: "Respostas",
       perf: "Performance",
     };
-    $("view-title").textContent = titles[name] || "Painel";
+    if ($("view-title")) $("view-title").textContent = titles[name] || "Painel";
   }
 
   // Login é feito no HTML (form). Aqui só render + toolbar.
@@ -847,9 +871,9 @@
   if ($("drawer-bg")) $("drawer-bg").onclick = closeDrawer;
 
   document.querySelectorAll(".nav-item").forEach(function (btn) {
-    btn.onclick = function () {
+    btn.addEventListener("click", function () {
       setView(btn.getAttribute("data-view"));
-    };
+    });
   });
   document.querySelectorAll("[data-range]").forEach(function (btn) {
     btn.onclick = function () {
