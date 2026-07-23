@@ -258,9 +258,6 @@ window.MAPA_DATA = {
       "Limites para relações confusas",
       "Critérios para relações mais seguras",
       "Plano de proteção emocional de 28 dias",
-      "Bônus 1: Ritual de Limpeza e Renovação (valor percebido R$ 27)",
-      "Bônus 2: Ritual de Desapego da Relação Confusa (valor percebido R$ 37)",
-      "Bônus 3: Kit de Proteção para Dias de Recaída (valor percebido R$ 47)",
     ],
     cta: "QUERO ACESSAR MEU MAPA COMPLETO",
     disclaimer:
