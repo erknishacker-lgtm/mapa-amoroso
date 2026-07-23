@@ -18,12 +18,14 @@ npx serve .
 
 Checkout: https://lastlink.com/p/C53821E2C/checkout-payment/
 
-## Analytics (funil, perguntas, respostas, dia/hora)
+## Analytics estilo Enlead (1 linha = 1 pessoa)
 
-Painel: `/admin/`
+Painel: **`/admin/`**
 
-1. Rode `supabase/schema.sql` no SQL Editor do Supabase  
-2. Preencha `config.js` com URL + anon key  
-3. Entre em `/admin/` com a senha (`mapa2026` por padrão — troque no SQL)
+1. Rode o arquivo **`supabase/schema.sql`** no SQL Editor (modelo novo `quiz_leads`)  
+2. `config.js` com URL + chave (já configurável)  
+3. Senha do painel: **`mapa2026`** (troque no SQL se quiser)
+
+O painel mostra: % por etapa, gargalos, respostas mais marcadas, gráficos dia/hora e a **esteira** (cada linha uma pessoa, colunas = perguntas).
 
 Detalhes: [docs/ANALYTICS.md](docs/ANALYTICS.md)

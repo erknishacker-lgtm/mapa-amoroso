@@ -1,58 +1,36 @@
-# Analytics do quiz — setup
+# Tracking estilo Enlead (1 linha = 1 pessoa)
 
-## 1. Criar projeto no Supabase
+## Modelo
 
-1. Acesse [supabase.com](https://supabase.com) e crie um projeto.
-2. **SQL Editor** → cole e rode o arquivo `supabase/schema.sql`.
-3. (Opcional) Troque a senha do admin:
+| Conceito | Implementação |
+|----------|----------------|
+| Cada visitante | 1 registro em `quiz_leads` (`lead_id`) |
+| Esteira de respostas | Coluna JSON `answers` → no painel vira colunas P1…P12 |
+| Parou no meio | Células seguintes ficam vazias |
+| % por pergunta | `step_funnel` no painel (quantos % dos leads chegaram em cada passo) |
+| Meta ads | UTMs, fbclid, fbp, fbc, gclid… |
+| Device / local | user-agent + geo best-effort (geojs) |
 
-```sql
-update public.app_settings
-set value = 'sua_senha_forte'
-where key = 'admin_password';
-```
+## Setup (obrigatório se ainda não rodou o SQL novo)
 
-Senha padrão do schema: `mapa2026`
+1. Supabase → **SQL Editor**
+2. Cole e rode **todo** o arquivo `supabase/schema.sql` (substitui o modelo antigo)
+3. `config.js` já com URL + chave
+4. Painel: `/admin/` senha `mapa2026`
 
-## 2. Colar as chaves no site
+## Fluxo no quiz
 
-1. Supabase → **Project Settings → API**
-2. Copie **Project URL** e **anon public** key
-3. Edite `config.js` na raiz do repo:
+1. Abre landing → cria/atualiza lead  
+2. Clica começar → marca step `start`  
+3. Perfil → nome/signo  
+4. Cada pergunta → grava respostas na **mesma linha**  
+5. Resultado → `completed_at` + padrão  
+6. Checkout → `checkout_clicked_at`  
 
-```js
-window.MAPA_CONFIG = {
-  supabaseUrl: "https://xxxx.supabase.co",
-  supabaseAnonKey: "eyJhbGciOi...",
-  timezoneLabel: "America/Sao_Paulo",
-};
-```
+## Painel
 
-4. Commit + push (ou configure no Vercel se preferir injetar depois).
-
-## 3. Painel
-
-Abra: `https://seu-dominio.vercel.app/admin/`
-
-- Filtros: hoje / 7 / 30 dias ou datas manuais
-- Funil, % por pergunta, respostas mais marcadas, gráficos por dia e por hora
-
-## Eventos gravados
-
-| event_type | Quando |
-|------------|--------|
-| landing | Abriu a home |
-| start | CTA começar |
-| profile | Nome/signo ou pular |
-| question_view | Viu a pergunta |
-| question_answer | Confirmou opções e avançou |
-| question_next | Avançou (junto do answer) |
-| result | Viu resultado |
-| checkout | Clicou pagar |
-| restart | Refazer mapa |
-
-## Privacidade
-
-- Sessão anônima (`localStorage`)
-- Nome/signo só se a pessoa preencher (meta do profile/result)
-- RLS: anônimo só **insere** eventos; leitura só via função `admin_analytics` com senha
+- KPIs grandes  
+- Cards de **% por passo** (gargalo em vermelho)  
+- Gráficos **dia** e **hora**  
+- Respostas mais marcadas  
+- **Tabela esteira** (linha = pessoa, coluna = pergunta)  

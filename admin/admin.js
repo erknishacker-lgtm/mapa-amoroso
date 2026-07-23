@@ -2,7 +2,7 @@
   var PASS_KEY = "mapa_admin_pass";
   var charts = {};
   var lastData = null;
-  var questionMeta = {};
+  var Q_ORDER = ["q1", "q2", "q3", "q4m", "q5", "q6", "q7", "q8m", "q9", "q10", "q11m", "q12"];
 
   var el = {
     login: document.getElementById("login-screen"),
@@ -16,10 +16,11 @@
     logout: document.getElementById("btn-logout"),
     status: document.getElementById("status-line"),
     kpis: document.getElementById("kpis"),
-    funnelTable: document.getElementById("funnel-table"),
-    qBody: document.querySelector("#table-questions tbody"),
+    stepGrid: document.getElementById("step-grid"),
     answers: document.getElementById("answers-list"),
-    answersSub: document.getElementById("answers-sub"),
+    answerFilters: document.getElementById("answer-q-filters"),
+    sheetHead: document.querySelector("#leads-sheet thead"),
+    sheetBody: document.querySelector("#leads-sheet tbody"),
     patterns: document.getElementById("patterns-list"),
   };
 
@@ -29,17 +30,13 @@
 
   function ymd(d) {
     var x = new Date(d);
-    var m = String(x.getMonth() + 1).padStart(2, "0");
-    var day = String(x.getDate()).padStart(2, "0");
-    return x.getFullYear() + "-" + m + "-" + day;
-  }
-
-  function startOfDayISO(dateStr) {
-    return dateStr + "T00:00:00-03:00";
-  }
-
-  function endOfDayISO(dateStr) {
-    return dateStr + "T23:59:59.999-03:00";
+    return (
+      x.getFullYear() +
+      "-" +
+      String(x.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(x.getDate()).padStart(2, "0")
+    );
   }
 
   function setDefaultDates(days) {
@@ -53,30 +50,35 @@
   function getPassword() {
     return sessionStorage.getItem(PASS_KEY) || "";
   }
-
   function setPassword(p) {
     sessionStorage.setItem(PASS_KEY, p);
   }
-
   function clearPassword() {
     sessionStorage.removeItem(PASS_KEY);
+  }
+
+  function qMeta(id) {
+    var qs = (window.MAPA_DATA && window.MAPA_DATA.questions) || [];
+    for (var i = 0; i < qs.length; i++) {
+      if (qs[i].id === id) return { index: i, text: qs[i].text, axis: qs[i].axis };
+    }
+    return { index: Q_ORDER.indexOf(id), text: id, axis: "" };
+  }
+
+  function qTitle(id) {
+    var m = qMeta(id);
+    var n = m.index >= 0 ? m.index + 1 : "?";
+    var t = (m.text || id || "").slice(0, 48);
+    return n + ". " + t;
   }
 
   async function fetchAnalytics() {
     var c = cfg();
     var url = (c.supabaseUrl || "").replace(/\/$/, "");
     var key = c.supabaseAnonKey || "";
-    if (!url || !key) {
-      throw new Error("Configure config.js com supabaseUrl e supabaseAnonKey.");
-    }
+    if (!url || !key) throw new Error("Configure config.js (URL + chave Supabase).");
     var password = getPassword();
     if (!password) throw new Error("Senha não informada.");
-
-    var body = {
-      p_password: password,
-      p_from: startOfDayISO(el.from.value),
-      p_to: endOfDayISO(el.to.value),
-    };
 
     var res = await fetch(url + "/rest/v1/rpc/admin_analytics", {
       method: "POST",
@@ -85,351 +87,324 @@
         apikey: key,
         Authorization: "Bearer " + key,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        p_password: password,
+        p_from: el.from.value + "T00:00:00-03:00",
+        p_to: el.to.value + "T23:59:59.999-03:00",
+      }),
     });
 
     if (!res.ok) {
       var t = await res.text();
       if (res.status === 401 || /UNAUTHORIZED|42501/i.test(t)) {
-        throw new Error("Senha incorreta ou sem permissão no Supabase.");
+        throw new Error("Senha incorreta ou função admin_analytics desatualizada.");
       }
-      throw new Error("Erro " + res.status + ": " + t.slice(0, 180));
+      if (/Could not find the function|PGRST202/i.test(t)) {
+        throw new Error("Rode o schema.sql novo no Supabase (função admin_analytics).");
+      }
+      if (/quiz_leads|PGRST205/i.test(t)) {
+        throw new Error("Tabela quiz_leads não existe. Rode supabase/schema.sql no SQL Editor.");
+      }
+      throw new Error("Erro " + res.status + ": " + t.slice(0, 200));
     }
     return res.json();
   }
 
-  function destroyChart(id) {
+  function destroy(id) {
     if (charts[id]) {
       charts[id].destroy();
       delete charts[id];
     }
   }
 
-  function renderKpis(data) {
-    var t = data.totals || {};
-    var f = data.funnel || {};
-    var start = t.started || f.start || 0;
-    var result = t.completed || f.result || 0;
-    var checkout = t.checkouts || f.checkout || 0;
-    var startToResult = start ? Math.round((result / start) * 1000) / 10 : 0;
-    var resultToPay = result ? Math.round((checkout / result) * 1000) / 10 : 0;
-
-    el.kpis.innerHTML =
-      kpi("Sessões", t.sessions || 0) +
-      kpi("Inícios quiz", start) +
-      kpi("Resultados", result, startToResult + "% dos inícios") +
-      kpi("Checkout", checkout, resultToPay + "% dos resultados") +
-      kpi("Eventos", t.events || 0);
-  }
-
-  function kpi(label, value, note) {
-    return (
-      '<div class="kpi"><span>' +
-      escapeHtml(label) +
-      "</span><strong>" +
-      escapeHtml(String(value)) +
-      "</strong>" +
-      (note ? "<em>" + escapeHtml(note) + "</em>" : "") +
-      "</div>"
-    );
-  }
-
-  function renderFunnel(data) {
-    var f = data.funnel || {};
-    var steps = [
-      { key: "landing", label: "Landing" },
-      { key: "start", label: "Começou" },
-      { key: "profile", label: "Perfil" },
-      { key: "any_question", label: "Alguma pergunta" },
-      { key: "result", label: "Resultado" },
-      { key: "checkout", label: "Checkout" },
-    ];
-    var max = 1;
-    steps.forEach(function (s) {
-      max = Math.max(max, Number(f[s.key] || 0));
-    });
-
-    var labels = steps.map(function (s) {
-      return s.label;
-    });
-    var values = steps.map(function (s) {
-      return Number(f[s.key] || 0);
-    });
-
-    destroyChart("funnel");
-    charts.funnel = new Chart(document.getElementById("chart-funnel"), {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Sessões",
-            data: values,
-            backgroundColor: "rgba(225, 29, 72, 0.75)",
-            borderRadius: 6,
-          },
-        ],
-      },
-      options: chartOpts(false),
-    });
-
-    var html = "";
-    var prev = null;
-    steps.forEach(function (s, i) {
-      var v = Number(f[s.key] || 0);
-      var pct = max ? Math.round((v / max) * 100) : 0;
-      var drop = "";
-      if (prev != null && prev > 0) {
-        var d = Math.round(((prev - v) / prev) * 1000) / 10;
-        drop = (d > 0 ? "−" : "") + Math.abs(d) + "%";
-      }
-      html +=
-        '<div class="funnel-row"><span>' +
-        escapeHtml(s.label) +
-        '</span><div class="funnel-bar"><i style="width:' +
-        pct +
-        '%"></i></div><strong>' +
-        v +
-        "</strong><span class=\"muted\">" +
-        escapeHtml(drop) +
-        "</span></div>";
-      prev = v;
-    });
-    el.funnelTable.innerHTML = html;
-  }
-
-  function chartOpts(legend) {
+  function chartBase(legend) {
     return {
       responsive: true,
-      maintainAspectRatio: true,
       plugins: {
-        legend: { display: !!legend, labels: { color: "#9aa3b2" } },
+        legend: {
+          display: !!legend,
+          labels: { color: "#5c564f", boxWidth: 12 },
+        },
       },
       scales: {
         x: {
-          ticks: { color: "#9aa3b2", maxRotation: 0 },
-          grid: { color: "rgba(42,47,58,0.6)" },
+          ticks: { color: "#5c564f", maxRotation: 0 },
+          grid: { color: "rgba(232,223,212,0.8)" },
         },
         y: {
           beginAtZero: true,
-          ticks: { color: "#9aa3b2", precision: 0 },
-          grid: { color: "rgba(42,47,58,0.6)" },
+          ticks: { color: "#5c564f", precision: 0 },
+          grid: { color: "rgba(232,223,212,0.8)" },
         },
       },
     };
   }
 
-  function renderDayHour(data) {
-    var days = data.by_day || [];
-    destroyChart("day");
-    charts.day = new Chart(document.getElementById("chart-day"), {
-      type: "bar",
-      data: {
-        labels: days.map(function (d) {
-          return d.day;
-        }),
-        datasets: [
-          {
-            label: "Inícios",
-            data: days.map(function (d) {
-              return d.starts || 0;
-            }),
-            backgroundColor: "rgba(56, 189, 248, 0.7)",
-            borderRadius: 4,
-          },
-          {
-            label: "Resultados",
-            data: days.map(function (d) {
-              return d.results || 0;
-            }),
-            backgroundColor: "rgba(34, 197, 94, 0.65)",
-            borderRadius: 4,
-          },
-          {
-            label: "Checkout",
-            data: days.map(function (d) {
-              return d.checkouts || 0;
-            }),
-            backgroundColor: "rgba(225, 29, 72, 0.7)",
-            borderRadius: 4,
-          },
-        ],
-      },
-      options: chartOpts(true),
+  function renderKpis(data) {
+    var t = data.totals || {};
+    var leads = t.leads || 0;
+    var started = t.started || 0;
+    var completed = t.completed || 0;
+    var checkouts = t.checkouts || 0;
+    var cRate = started ? Math.round((completed / started) * 1000) / 10 : 0;
+    var pRate = completed ? Math.round((checkouts / completed) * 1000) / 10 : 0;
+    var avg = t.avg_duration_sec;
+    var avgLabel = avg != null ? Math.round(avg / 60) + " min" : "—";
+
+    el.kpis.innerHTML =
+      kpi("Leads", leads) +
+      kpi("Começaram", started) +
+      kpi("Terminaram", completed, cRate + "% dos que começaram", cRate < 40) +
+      kpi("Checkout", checkouts, pRate + "% dos que terminaram", true) +
+      kpi("Tempo médio", avgLabel);
+  }
+
+  function kpi(label, value, note, hot) {
+    return (
+      '<div class="kpi' +
+      (hot ? " is-hot" : "") +
+      '"><span>' +
+      esc(label) +
+      "</span><strong>" +
+      esc(String(value)) +
+      "</strong>" +
+      (note ? "<em>" + esc(note) + "</em>" : "") +
+      "</div>"
+    );
+  }
+
+  function renderSteps(data) {
+    var steps = data.step_funnel || [];
+    var html = "";
+    var prevRate = null;
+    var worstDrop = -1;
+    var worstKey = null;
+
+    steps.forEach(function (s, i) {
+      if (i === 0) return;
+      var prev = steps[i - 1];
+      var drop = Number(prev.pass_rate || 0) - Number(s.pass_rate || 0);
+      if (drop > worstDrop) {
+        worstDrop = drop;
+        worstKey = s.step_key;
+      }
     });
 
-    var hoursMap = {};
-    for (var h = 0; h < 24; h++) hoursMap[h] = { starts: 0, results: 0, checkouts: 0 };
-    (data.by_hour || []).forEach(function (row) {
-      var hour = Number(row.hour);
-      if (hoursMap[hour]) {
-        hoursMap[hour] = {
-          starts: row.starts || 0,
-          results: row.results || 0,
-          checkouts: row.checkouts || 0,
+    steps.forEach(function (s) {
+      var rate = Number(s.pass_rate || 0);
+      var isDrop = s.step_key === worstKey && worstDrop >= 8;
+      html +=
+        '<div class="step-card' +
+        (isDrop ? " is-drop" : "") +
+        '"><div class="step-label">' +
+        esc(s.label) +
+        '</div><div class="step-pct">' +
+        rate +
+        '%</div><div class="step-n">' +
+        esc(String(s.reached || 0)) +
+        " pessoas</div></div>";
+      prevRate = rate;
+    });
+    el.stepGrid.innerHTML = html || '<p class="muted">Sem dados ainda.</p>';
+
+    destroy("funnel");
+    if (typeof Chart !== "undefined" && steps.length) {
+      charts.funnel = new Chart(document.getElementById("chart-funnel"), {
+        type: "bar",
+        data: {
+          labels: steps.map(function (s) {
+            return s.label;
+          }),
+          datasets: [
+            {
+              label: "% do total de leads",
+              data: steps.map(function (s) {
+                return Number(s.pass_rate || 0);
+              }),
+              backgroundColor: steps.map(function (s) {
+                return s.step_key === worstKey ? "rgba(192,57,43,0.9)" : "rgba(192,57,43,0.55)";
+              }),
+              borderRadius: 8,
+            },
+          ],
+        },
+        options: chartBase(false),
+      });
+    }
+  }
+
+  function renderDayHour(data) {
+    var days = data.by_day || [];
+    destroy("day");
+    if (typeof Chart !== "undefined") {
+      charts.day = new Chart(document.getElementById("chart-day"), {
+        type: "bar",
+        data: {
+          labels: days.map(function (d) {
+            return d.day;
+          }),
+          datasets: [
+            {
+              label: "Leads",
+              data: days.map(function (d) {
+                return d.leads || 0;
+              }),
+              backgroundColor: "rgba(29,78,216,0.55)",
+              borderRadius: 4,
+            },
+            {
+              label: "Inícios",
+              data: days.map(function (d) {
+                return d.starts || 0;
+              }),
+              backgroundColor: "rgba(21,128,61,0.55)",
+              borderRadius: 4,
+            },
+            {
+              label: "Resultados",
+              data: days.map(function (d) {
+                return d.results || 0;
+              }),
+              backgroundColor: "rgba(180,83,9,0.55)",
+              borderRadius: 4,
+            },
+            {
+              label: "Checkout",
+              data: days.map(function (d) {
+                return d.checkouts || 0;
+              }),
+              backgroundColor: "rgba(192,57,43,0.75)",
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: chartBase(true),
+      });
+    }
+
+    var map = {};
+    for (var h = 0; h < 24; h++) map[h] = { leads: 0, starts: 0, results: 0, checkouts: 0 };
+    (data.by_hour || []).forEach(function (r) {
+      var hour = Number(r.hour);
+      if (map[hour]) {
+        map[hour] = {
+          leads: r.leads || 0,
+          starts: r.starts || 0,
+          results: r.results || 0,
+          checkouts: r.checkouts || 0,
         };
       }
     });
     var labels = [];
-    var starts = [];
-    var results = [];
-    var checkouts = [];
+    var leads = [],
+      starts = [],
+      results = [],
+      checkouts = [];
     for (var i = 0; i < 24; i++) {
       labels.push(String(i).padStart(2, "0") + "h");
-      starts.push(hoursMap[i].starts);
-      results.push(hoursMap[i].results);
-      checkouts.push(hoursMap[i].checkouts);
+      leads.push(map[i].leads);
+      starts.push(map[i].starts);
+      results.push(map[i].results);
+      checkouts.push(map[i].checkouts);
     }
 
-    destroyChart("hour");
-    charts.hour = new Chart(document.getElementById("chart-hour"), {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Inícios",
-            data: starts,
-            borderColor: "#38bdf8",
-            backgroundColor: "rgba(56,189,248,0.15)",
-            tension: 0.3,
-            fill: true,
-          },
-          {
-            label: "Resultados",
-            data: results,
-            borderColor: "#22c55e",
-            tension: 0.3,
-            fill: false,
-          },
-          {
-            label: "Checkout",
-            data: checkouts,
-            borderColor: "#e11d48",
-            tension: 0.3,
-            fill: false,
-          },
-        ],
-      },
-      options: chartOpts(true),
-    });
-  }
-
-  function loadQuestionMeta() {
-    // tenta usar data.js se carregado; senão usa ids crus
-    try {
-      var s = document.createElement("script");
-      s.src = "../data.js";
-      s.onload = function () {
-        var qs = (window.MAPA_DATA && window.MAPA_DATA.questions) || [];
-        qs.forEach(function (q, i) {
-          questionMeta[q.id] = { text: q.text, axis: q.axis, index: i, options: q.options || [] };
-        });
-        if (lastData) renderQuestions(lastData);
-      };
-      document.head.appendChild(s);
-    } catch (e) {}
-  }
-
-  function qLabel(id) {
-    var m = questionMeta[id];
-    if (!m) return id || "—";
-    var short = (m.text || id).slice(0, 64);
-    return (m.index != null ? m.index + 1 + ". " : "") + short;
-  }
-
-  function renderQuestions(data) {
-    var rows = data.questions || [];
-    var maxDrop = -1;
-    var bottleneckId = null;
-    rows.forEach(function (r) {
-      var d = Number(r.drop_rate || 0);
-      if (d > maxDrop && Number(r.views || 0) >= 3) {
-        maxDrop = d;
-        bottleneckId = r.question_id;
-      }
-    });
-
-    el.qBody.innerHTML = "";
-    if (!rows.length) {
-      el.qBody.innerHTML = '<tr><td colspan="7" class="muted">Sem dados de perguntas no período.</td></tr>';
-      return;
+    destroy("hour");
+    if (typeof Chart !== "undefined") {
+      charts.hour = new Chart(document.getElementById("chart-hour"), {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Leads",
+              data: leads,
+              borderColor: "#1d4ed8",
+              tension: 0.3,
+              fill: false,
+            },
+            {
+              label: "Inícios",
+              data: starts,
+              borderColor: "#15803d",
+              tension: 0.3,
+              fill: false,
+            },
+            {
+              label: "Resultados",
+              data: results,
+              borderColor: "#b45309",
+              tension: 0.3,
+              fill: false,
+            },
+            {
+              label: "Checkout",
+              data: checkouts,
+              borderColor: "#c0392b",
+              tension: 0.3,
+              fill: false,
+            },
+          ],
+        },
+        options: chartBase(true),
+      });
     }
+  }
 
-    rows.forEach(function (r) {
-      var tr = document.createElement("tr");
-      if (r.question_id === bottleneckId) tr.className = "is-bottleneck";
-      var pass = Number(r.pass_rate || 0);
-      var drop = Number(r.drop_rate || 0);
-      tr.innerHTML =
-        "<td>" +
-        escapeHtml(String(r.step_index != null ? r.step_index + 1 : "—")) +
-        "</td><td>" +
-        escapeHtml(qLabel(r.question_id)) +
-        "</td><td>" +
-        escapeHtml(String(r.views || 0)) +
-        "</td><td>" +
-        escapeHtml(String(r.nexts || 0)) +
-        '</td><td class="' +
-        (pass >= 70 ? "pass-ok" : "") +
-        '">' +
-        pass +
-        '%</td><td class="' +
-        (drop >= 25 ? "drop-high" : "") +
-        '">' +
-        drop +
-        '%</td><td><button type="button" class="btn-link" data-qid="' +
-        escapeHtml(r.question_id) +
-        '">Ver respostas</button></td>';
-      el.qBody.appendChild(tr);
+  function renderAnswerFilters(data) {
+    var ids = {};
+    (data.answers || []).forEach(function (a) {
+      if (a.question_id) ids[a.question_id] = true;
     });
-
-    el.qBody.querySelectorAll("[data-qid]").forEach(function (btn) {
+    var order = Q_ORDER.filter(function (id) {
+      return ids[id];
+    });
+    var html =
+      '<button type="button" class="chip is-active" data-aq="*">Todas</button>';
+    order.forEach(function (id) {
+      html +=
+        '<button type="button" class="chip" data-aq="' +
+        esc(id) +
+        '">P' +
+        (Q_ORDER.indexOf(id) + 1) +
+        "</button>";
+    });
+    el.answerFilters.innerHTML = html;
+    el.answerFilters.querySelectorAll("[data-aq]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        renderAnswers(lastData, btn.getAttribute("data-qid"));
+        el.answerFilters.querySelectorAll(".chip").forEach(function (c) {
+          c.classList.remove("is-active");
+        });
+        btn.classList.add("is-active");
+        renderAnswers(lastData, btn.getAttribute("data-aq"));
       });
     });
   }
 
-  function renderAnswers(data, filterQid) {
+  function renderAnswers(data, filter) {
     var rows = data.answers || [];
-    if (filterQid) {
+    if (filter && filter !== "*") {
       rows = rows.filter(function (a) {
-        return a.question_id === filterQid;
+        return a.question_id === filter;
       });
-      el.answersSub.textContent = "Respostas de: " + qLabel(filterQid);
-    } else {
-      el.answersSub.textContent = "Top opções no período (todas as perguntas). Clique em “Ver respostas” para filtrar.";
     }
-
-    // agrupa por question
-    var byQ = {};
-    rows.forEach(function (a) {
-      var id = a.question_id || "unknown";
-      if (!byQ[id]) byQ[id] = [];
-      byQ[id].push(a);
-    });
-
-    var ids = Object.keys(byQ);
-    if (!ids.length) {
-      el.answers.innerHTML = '<p class="muted">Nenhuma resposta registrada no período.</p>';
+    if (!rows.length) {
+      el.answers.innerHTML = '<p class="muted">Nenhuma resposta no período.</p>';
       return;
     }
 
-    // se geral, pega top 12 opções flat
-    if (!filterQid) {
+    if (!filter || filter === "*") {
       var flat = rows.slice().sort(function (a, b) {
         return (b.times || 0) - (a.times || 0);
       });
       var max = flat[0] ? flat[0].times : 1;
-      var html = '<div class="answer-block"><h3>Top marcações</h3>';
-      flat.slice(0, 15).forEach(function (a) {
+      var html = '<div class="answer-block"><h3>Top marcações (todas as perguntas)</h3>';
+      flat.slice(0, 20).forEach(function (a) {
         var w = max ? Math.round((a.times / max) * 100) : 0;
         html +=
-          '<div class="answer-row"><div><div>' +
-          escapeHtml(a.option_label || "opção " + a.option_index) +
-          '</div><div class="muted" style="font-size:0.75rem">' +
-          escapeHtml(qLabel(a.question_id)) +
+          '<div class="answer-row"><div><strong>' +
+          esc(a.option_label || "—") +
+          '</strong><div class="muted" style="font-size:0.78rem">' +
+          esc(qTitle(a.question_id)) +
           '</div><div class="answer-bar"><i style="width:' +
           w +
           '%"></i></div></div><strong>' +
@@ -441,17 +416,16 @@
       return;
     }
 
-    var list = byQ[filterQid].sort(function (a, b) {
+    var list = rows.sort(function (a, b) {
       return (b.times || 0) - (a.times || 0);
     });
     var maxT = list[0] ? list[0].times : 1;
-    var block =
-      '<div class="answer-block"><h3>' + escapeHtml(qLabel(filterQid)) + "</h3>";
+    var block = '<div class="answer-block"><h3>' + esc(qTitle(filter)) + "</h3>";
     list.forEach(function (a) {
       var w = maxT ? Math.round((a.times / maxT) * 100) : 0;
       block +=
         '<div class="answer-row"><div>' +
-        escapeHtml(a.option_label || "opção " + a.option_index) +
+        esc(a.option_label || "—") +
         '<div class="answer-bar"><i style="width:' +
         w +
         '%"></i></div></div><strong>' +
@@ -462,45 +436,134 @@
     el.answers.innerHTML = block;
   }
 
-  function renderPatterns(data) {
-    var rows = data.patterns || [];
-    var names = {
-      anxious: "Apego ansioso",
-      savior: "Salvadora",
-      intensity: "Intensidade",
-      silence: "Auto-silenciamento",
-      familiar: "Dor familiar",
-    };
-    destroyChart("patterns");
-    if (!rows.length) {
-      el.patterns.innerHTML = '<p class="muted">Sem resultados no período.</p>';
+  function cellAnswer(answers, qid) {
+    if (!answers || !answers[qid]) return "";
+    var a = answers[qid];
+    if (a.labels && a.labels.length) return a.labels.join(" · ");
+    return "";
+  }
+
+  function renderSheet(data) {
+    var leads = data.leads || [];
+    var head =
+      "<tr>" +
+      '<th class="sticky-col">Lead</th>' +
+      "<th>Início</th>" +
+      "<th>Status</th>" +
+      "<th>Dispositivo</th>" +
+      "<th>Local</th>" +
+      "<th>UTM</th>" +
+      Q_ORDER.map(function (id, i) {
+        return "<th>P" + (i + 1) + "</th>";
+      }).join("") +
+      "<th>Padrão</th>" +
+      "<th>Checkout</th>" +
+      "<th>Tempo</th>" +
+      "</tr>";
+    el.sheetHead.innerHTML = head;
+
+    if (!leads.length) {
+      el.sheetBody.innerHTML =
+        '<tr><td colspan="20" class="muted">Nenhum lead no período. Faça um teste no quiz após rodar o schema novo.</td></tr>';
       return;
     }
-    charts.patterns = new Chart(document.getElementById("chart-patterns"), {
-      type: "doughnut",
-      data: {
-        labels: rows.map(function (r) {
-          return names[r.pattern_id] || r.pattern_id;
-        }),
-        datasets: [
-          {
-            data: rows.map(function (r) {
-              return r.sessions || 0;
-            }),
-            backgroundColor: ["#e11d48", "#f59e0b", "#38bdf8", "#a78bfa", "#22c55e"],
-          },
-        ],
-      },
-      options: {
-        plugins: { legend: { position: "bottom", labels: { color: "#9aa3b2" } } },
-      },
-    });
 
+    el.sheetBody.innerHTML = leads
+      .map(function (L) {
+        var shortId = (L.lead_id || "").slice(0, 8);
+        var when = L.started_at
+          ? new Date(L.started_at).toLocaleString("pt-BR", { hour12: false })
+          : "—";
+        var status = L.status || "—";
+        var badge =
+          status === "checkout"
+            ? "badge-ok"
+            : status === "completed"
+              ? "badge-mid"
+              : "badge-out";
+        var loc = [L.city, L.region, L.country].filter(Boolean).join(", ") || "—";
+        var utm = [L.utm_source, L.utm_campaign].filter(Boolean).join(" / ") || "—";
+        var device = [L.device_type, L.os, L.browser].filter(Boolean).join(" · ") || "—";
+        var answers = L.answers || {};
+        var qCells = Q_ORDER.map(function (id) {
+          var v = cellAnswer(answers, id);
+          return v
+            ? "<td title=\"" + esc(v) + "\">" + esc(v.slice(0, 40)) + (v.length > 40 ? "…" : "") + "</td>"
+            : '<td class="empty">—</td>';
+        }).join("");
+        var dur =
+          L.duration_seconds != null
+            ? Math.round(L.duration_seconds / 60) + "m " + (L.duration_seconds % 60) + "s"
+            : "—";
+        return (
+          "<tr>" +
+          '<td class="sticky-col" title="' +
+          esc(L.lead_id || "") +
+          '">' +
+          esc(shortId) +
+          "</td>" +
+          "<td>" +
+          esc(when) +
+          '</td><td><span class="badge ' +
+          badge +
+          '">' +
+          esc(status) +
+          "</span></td>" +
+          "<td>" +
+          esc(device) +
+          "</td><td>" +
+          esc(loc) +
+          "</td><td>" +
+          esc(utm) +
+          "</td>" +
+          qCells +
+          "<td>" +
+          esc(L.pattern_name || L.pattern_id || "—") +
+          "</td><td>" +
+          (L.checkout ? "✓" : "—") +
+          "</td><td>" +
+          esc(dur) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+  }
+
+  function renderPatterns(data) {
+    var rows = data.patterns || [];
+    destroy("patterns");
+    if (!rows.length) {
+      el.patterns.innerHTML = '<p class="muted">Sem padrões ainda.</p>';
+      return;
+    }
+    if (typeof Chart !== "undefined") {
+      charts.patterns = new Chart(document.getElementById("chart-patterns"), {
+        type: "doughnut",
+        data: {
+          labels: rows.map(function (r) {
+            return r.pattern_name || r.pattern_id;
+          }),
+          datasets: [
+            {
+              data: rows.map(function (r) {
+                return r.sessions || 0;
+              }),
+              backgroundColor: ["#c0392b", "#e67e22", "#2980b9", "#8e44ad", "#27ae60"],
+            },
+          ],
+        },
+        options: {
+          plugins: {
+            legend: { position: "bottom", labels: { color: "#5c564f" } },
+          },
+        },
+      });
+    }
     el.patterns.innerHTML = rows
       .map(function (r) {
         return (
-          '<div class="answer-row"><span>' +
-          escapeHtml(names[r.pattern_id] || r.pattern_id) +
+          '<div class="pattern-row"><span>' +
+          esc(r.pattern_name || r.pattern_id) +
           "</span><strong>" +
           r.sessions +
           "</strong></div>"
@@ -509,7 +572,7 @@
       .join("");
   }
 
-  function escapeHtml(s) {
+  function esc(s) {
     return String(s)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -523,17 +586,20 @@
       var data = await fetchAnalytics();
       lastData = data;
       renderKpis(data);
-      renderFunnel(data);
+      renderSteps(data);
       renderDayHour(data);
-      renderQuestions(data);
-      renderAnswers(data, null);
+      renderAnswerFilters(data);
+      renderAnswers(data, "*");
+      renderSheet(data);
       renderPatterns(data);
       el.status.textContent =
         "Período " +
         el.from.value +
         " → " +
         el.to.value +
-        " · atualizado " +
+        " · " +
+        ((data.leads && data.leads.length) || 0) +
+        " leads na tabela · atualizado " +
         new Date().toLocaleString("pt-BR");
     } catch (e) {
       el.status.textContent = "Erro: " + (e.message || e);
@@ -547,12 +613,8 @@
   function showLogin(msg) {
     el.login.hidden = false;
     el.dash.hidden = true;
-    if (msg) {
-      el.loginErr.hidden = false;
-      el.loginErr.textContent = msg;
-    } else {
-      el.loginErr.hidden = true;
-    }
+    el.loginErr.hidden = !msg;
+    el.loginErr.textContent = msg || "";
   }
 
   function showDash() {
@@ -563,18 +625,13 @@
 
   el.loginBtn.addEventListener("click", function () {
     var p = (el.pass.value || "").trim();
-    if (!p) {
-      showLogin("Digite a senha.");
-      return;
-    }
+    if (!p) return showLogin("Digite a senha.");
     setPassword(p);
     showDash();
   });
-
   el.pass.addEventListener("keydown", function (e) {
     if (e.key === "Enter") el.loginBtn.click();
   });
-
   el.refresh.addEventListener("click", load);
   el.logout.addEventListener("click", function () {
     clearPassword();
@@ -588,14 +645,12 @@
       });
       chip.classList.add("is-active");
       var r = chip.getAttribute("data-range");
-      if (r === "today") setDefaultDates(1);
-      else setDefaultDates(Number(r) || 7);
+      setDefaultDates(r === "today" ? 1 : Number(r) || 7);
       if (getPassword()) load();
     });
   });
 
   setDefaultDates(7);
-  loadQuestionMeta();
   if (getPassword()) showDash();
   else showLogin();
 })();

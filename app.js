@@ -608,6 +608,7 @@
     });
     Ax.profile({
       hasName: !!state.name,
+      name: state.name || null,
       hasSign: !!state.sign,
       skipped: false,
       sign: state.sign || null,
