@@ -5,7 +5,9 @@
  * Enquanto estiver vazio, o quiz funciona normalmente e o tracking só fica em silêncio.
  */
 window.MAPA_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  // URL base do projeto (sem /rest/v1/)
+  supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
+  // Project Settings → API → publishable / anon
+  supabaseAnonKey: "sb_publishable_RO2B7XCTosTdDTCPpMNAjA_iZP68utA",
   timezoneLabel: "America/Sao_Paulo",
 };
