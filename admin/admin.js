@@ -580,76 +580,81 @@
       .replace(/"/g, "&quot;");
   }
 
-  async function load() {
-    el.status.textContent = "Carregando…";
-    try {
-      var data = await fetchAnalytics();
-      lastData = data;
-      renderKpis(data);
-      renderSteps(data);
-      renderDayHour(data);
-      renderAnswerFilters(data);
-      renderAnswers(data, "*");
-      renderSheet(data);
-      renderPatterns(data);
+  function applyData(data) {
+    lastData = data;
+    renderKpis(data);
+    renderSteps(data);
+    renderDayHour(data);
+    renderAnswerFilters(data);
+    renderAnswers(data, "*");
+    renderSheet(data);
+    renderPatterns(data);
+    if (el.status) {
       el.status.textContent =
         "Período " +
-        el.from.value +
+        (el.from && el.from.value) +
         " → " +
-        el.to.value +
+        (el.to && el.to.value) +
         " · " +
         ((data.leads && data.leads.length) || 0) +
-        " leads na tabela · atualizado " +
+        " leads · " +
         new Date().toLocaleString("pt-BR");
+    }
+  }
+
+  async function load() {
+    if (el.status) el.status.textContent = "Carregando…";
+    try {
+      var data = await fetchAnalytics();
+      applyData(data);
     } catch (e) {
-      el.status.textContent = "Erro: " + (e.message || e);
-      if (/Senha incorreta|UNAUTHORIZED/i.test(String(e.message || e))) {
-        clearPassword();
-        showLogin("Senha incorreta.");
-      }
+      if (el.status) el.status.textContent = "Erro: " + (e.message || e);
     }
   }
 
   function showLogin(msg) {
-    el.login.hidden = false;
-    el.dash.hidden = true;
-    el.loginErr.hidden = !msg;
-    el.loginErr.textContent = msg || "";
+    if (el.login) {
+      el.login.style.display = "";
+      el.login.hidden = false;
+    }
+    if (el.dash) {
+      el.dash.style.display = "none";
+      el.dash.hidden = true;
+    }
+    if (el.loginErr) {
+      el.loginErr.style.display = msg ? "block" : "none";
+      el.loginErr.hidden = !msg;
+      el.loginErr.textContent = msg || "";
+    }
   }
 
   function showDash() {
-    el.login.hidden = true;
-    el.dash.hidden = false;
-    load();
+    if (el.login) {
+      el.login.style.display = "none";
+      el.login.hidden = true;
+    }
+    if (el.dash) {
+      el.dash.style.display = "block";
+      el.dash.hidden = false;
+    }
   }
 
-  el.loginBtn.addEventListener("click", async function () {
-    var p = (el.pass.value || "").trim();
-    if (!p) return showLogin("Digite a senha.");
-    el.loginErr.hidden = true;
-    el.loginBtn.disabled = true;
-    el.loginBtn.textContent = "Entrando…";
-    setPassword(p);
-    // valida senha ANTES de trocar de tela
-    try {
-      await fetchAnalytics();
-      showDash();
-    } catch (e) {
+  // API pública para o login embutido no HTML
+  window.__adminRender = function (data) {
+    showDash();
+    applyData(data);
+  };
+  window.__adminLoad = load;
+
+  if (el.refresh) el.refresh.addEventListener("click", load);
+  if (el.logout) {
+    el.logout.addEventListener("click", function () {
       clearPassword();
-      showLogin(e.message || "Não foi possível entrar.");
-    } finally {
-      el.loginBtn.disabled = false;
-      el.loginBtn.textContent = "Abrir painel";
-    }
-  });
-  el.pass.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") el.loginBtn.click();
-  });
-  el.refresh.addEventListener("click", load);
-  el.logout.addEventListener("click", function () {
-    clearPassword();
-    showLogin();
-  });
+      showLogin();
+      if (el.login) el.login.style.display = "";
+      if (el.dash) el.dash.style.display = "none";
+    });
+  }
 
   document.querySelectorAll("[data-range]").forEach(function (chip) {
     chip.addEventListener("click", function () {
@@ -664,6 +669,6 @@
   });
 
   setDefaultDates(7);
-  if (getPassword()) showDash();
-  else showLogin();
+  // NÃO auto-login (evita tela branca com senha antiga no sessionStorage)
 })();
+

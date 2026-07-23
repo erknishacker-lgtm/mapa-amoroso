@@ -4,45 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <title>Tracking Quiz · Mapa Amoroso</title>
+  <title>Admin · Mapa Amoroso</title>
   <link rel="stylesheet" href="admin.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <!-- config embutida (fallback se ../config.js falhar no path) -->
-  <script>
-    window.MAPA_CONFIG = window.MAPA_CONFIG || {
-      supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
-      supabaseAnonKey: "sb_publishable_RO2B7XCTosTdDTCPpMNAjA_iZP68utA",
-      timezoneLabel: "America/Sao_Paulo"
-    };
-  </script>
-  <script src="../config.js" defer></script>
-  <script src="../data.js" defer></script>
-  <script src="admin.js" defer></script>
 </head>
 <body>
   <div id="login-screen" class="login-screen">
     <div class="login-card">
       <div class="login-brand">MAPA DO PADRÃO AMOROSO</div>
-      <h1>Tracking do quiz</h1>
-      <p class="login-help">Modelo esteira (1 linha = 1 pessoa). Senha padrão do SQL: <code>mapa2026</code></p>
-      <label class="field">
-        <span>Senha do painel</span>
-        <input type="password" id="admin-password" autocomplete="current-password" placeholder="••••••••" />
+      <h1>Painel de tracking</h1>
+      <p class="login-help">Senha: <code>mapa2026</code></p>
+
+      <label class="field" for="admin-password">
+        <span>Senha</span>
+        <input id="admin-password" name="password" type="password" value="" autocomplete="current-password" placeholder="mapa2026" />
       </label>
+
       <button type="button" class="btn-primary" id="btn-login">Abrir painel</button>
-      <p class="login-error" id="login-error" hidden></p>
+      <p id="login-error" class="login-error" style="display:none"></p>
+      <p id="login-debug" class="muted" style="margin-top:12px;font-size:0.8rem;word-break:break-all"></p>
     </div>
   </div>
 
-  <div id="dash" class="dash" hidden>
+  <div id="dash" class="dash" style="display:none">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Analytics · estilo Enlead</p>
+        <p class="eyebrow">Analytics</p>
         <h1>Comportamento no quiz</h1>
       </div>
       <div class="filters">
-        <button type="button" class="chip" data-range="today">Hoje</button>
         <button type="button" class="chip is-active" data-range="7">7 dias</button>
+        <button type="button" class="chip" data-range="today">Hoje</button>
         <button type="button" class="chip" data-range="30">30 dias</button>
         <label class="field-inline"><span>De</span><input type="date" id="date-from" /></label>
         <label class="field-inline"><span>Até</span><input type="date" id="date-to" /></label>
@@ -52,54 +43,38 @@
     </header>
 
     <p class="status" id="status-line">—</p>
-
-    <!-- KPIs grandes -->
     <section class="kpis" id="kpis"></section>
 
-    <!-- Funil por etapa com % bem visível -->
     <section class="panel panel-hero">
       <div class="panel-head">
         <h2>% que chegou em cada passo</h2>
-        <p>Colunas do funil · quanto maior a queda, maior o gargalo</p>
+        <p>Gargalo fica em destaque vermelho</p>
       </div>
       <div class="step-grid" id="step-grid"></div>
-      <div class="chart-box">
-        <canvas id="chart-funnel" height="100"></canvas>
-      </div>
+      <div class="chart-box"><canvas id="chart-funnel" height="100"></canvas></div>
     </section>
 
     <div class="split">
       <section class="panel">
-        <div class="panel-head">
-          <h2>Por dia</h2>
-          <p>Leads · inícios · resultados · checkout</p>
-        </div>
+        <div class="panel-head"><h2>Por dia</h2></div>
         <canvas id="chart-day" height="150"></canvas>
       </section>
       <section class="panel">
-        <div class="panel-head">
-          <h2>Por hora</h2>
-          <p>Fuso América/São Paulo</p>
-        </div>
+        <div class="panel-head"><h2>Por hora (SP)</h2></div>
         <canvas id="chart-hour" height="150"></canvas>
       </section>
     </div>
 
-    <!-- Respostas mais marcadas -->
     <section class="panel">
-      <div class="panel-head">
-        <h2>Respostas mais marcadas</h2>
-        <p>O que as pessoas escolhem em cada pergunta</p>
-      </div>
+      <div class="panel-head"><h2>Respostas mais marcadas</h2></div>
       <div class="answer-filters" id="answer-q-filters"></div>
       <div id="answers-list" class="answers-list"></div>
     </section>
 
-    <!-- Tabela esteira: linha = pessoa -->
     <section class="panel panel-sheet">
       <div class="panel-head">
         <h2>Esteira de leads</h2>
-        <p>Cada <strong>linha = uma pessoa</strong>. Células vazias = parou antes (abandono).</p>
+        <p>Cada linha = uma pessoa. Vazio = abandonou.</p>
       </div>
       <div class="sheet-scroll">
         <table class="sheet" id="leads-sheet">
@@ -110,14 +85,163 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <h2>Padrões no resultado</h2>
-      </div>
+      <div class="panel-head"><h2>Padrões</h2></div>
       <div class="split-inner">
         <canvas id="chart-patterns" height="160"></canvas>
         <div id="patterns-list" class="patterns-list"></div>
       </div>
     </section>
   </div>
+
+  <!-- Config fixa no admin (não depende de path) -->
+  <script>
+    window.MAPA_CONFIG = {
+      supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
+      supabaseAnonKey: "sb_publishable_RO2B7XCTosTdDTCPpMNAjA_iZP68utA",
+      timezoneLabel: "America/Sao_Paulo"
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="../data.js"></script>
+  <script src="admin.js"></script>
+  <script>
+    // Garante binding do botão mesmo se algo falhar no admin.js
+    (function () {
+      function showErr(msg) {
+        var e = document.getElementById("login-error");
+        if (!e) return;
+        e.style.display = "block";
+        e.textContent = msg;
+      }
+      function debug(msg) {
+        var d = document.getElementById("login-debug");
+        if (d) d.textContent = msg;
+      }
+
+      window.__doAdminLogin = async function () {
+        var input = document.getElementById("admin-password");
+        var btn = document.getElementById("btn-login");
+        var pass = (input && input.value ? input.value : "").trim();
+        if (!pass) {
+          showErr("Digite a senha mapa2026");
+          return;
+        }
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Entrando…";
+        }
+        showErr("");
+        document.getElementById("login-error").style.display = "none";
+
+        var cfg = window.MAPA_CONFIG || {};
+        var url = (cfg.supabaseUrl || "").replace(/\/$/, "");
+        var key = cfg.supabaseAnonKey || "";
+        debug("URL: " + url + " | key: " + (key ? key.slice(0, 18) + "…" : "VAZIA"));
+
+        try {
+          if (!url || !key) throw new Error("Config Supabase vazia no admin.");
+
+          var from = document.getElementById("date-from");
+          var to = document.getElementById("date-to");
+          // datas padrão se vazias
+          if (from && !from.value) {
+            var d = new Date();
+            d.setDate(d.getDate() - 6);
+            from.value = d.toISOString().slice(0, 10);
+          }
+          if (to && !to.value) {
+            to.value = new Date().toISOString().slice(0, 10);
+          }
+
+          var res = await fetch(url + "/rest/v1/rpc/admin_analytics", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: key,
+              Authorization: "Bearer " + key
+            },
+            body: JSON.stringify({
+              p_password: pass,
+              p_from: (from && from.value ? from.value : "2020-01-01") + "T00:00:00-03:00",
+              p_to: (to && to.value ? to.value : "2099-12-31") + "T23:59:59-03:00"
+            })
+          });
+
+          var text = await res.text();
+          debug("HTTP " + res.status + " · " + text.slice(0, 180));
+
+          if (!res.ok) {
+            if (/UNAUTHORIZED|42501/i.test(text)) {
+              throw new Error("Senha recusada pelo Supabase. Rode o arquivo supabase/fix_admin.sql no SQL Editor.");
+            }
+            if (/Could not find the function|PGRST202/i.test(text)) {
+              throw new Error("Função admin_analytics não existe. Rode supabase/fix_admin.sql");
+            }
+            if (/quiz_leads|PGRST205/i.test(text)) {
+              throw new Error("Tabela quiz_leads não existe. Rode supabase/schema.sql e depois fix_admin.sql");
+            }
+            throw new Error("Erro " + res.status + ": " + text.slice(0, 160));
+          }
+
+          var data = JSON.parse(text);
+          try { sessionStorage.setItem("mapa_admin_pass", pass); } catch (e) {}
+
+          // Abre painel
+          document.getElementById("login-screen").style.display = "none";
+          document.getElementById("dash").style.display = "block";
+
+          // Entrega dados pro admin.js se existir
+          if (typeof window.__adminRender === "function") {
+            window.__adminRender(data);
+          } else if (typeof window.__adminLoad === "function") {
+            window.__adminLoad();
+          } else {
+            document.getElementById("status-line").textContent =
+              "Login OK · " + ((data.leads && data.leads.length) || 0) + " leads. Se os gráficos não aparecerem, recarregue a página.";
+            // render mínimo de KPIs sem admin.js
+            var t = data.totals || {};
+            document.getElementById("kpis").innerHTML =
+              '<div class="kpi"><span>Leads</span><strong>' + (t.leads || 0) + '</strong></div>' +
+              '<div class="kpi"><span>Começaram</span><strong>' + (t.started || 0) + '</strong></div>' +
+              '<div class="kpi"><span>Terminaram</span><strong>' + (t.completed || 0) + '</strong></div>' +
+              '<div class="kpi is-hot"><span>Checkout</span><strong>' + (t.checkouts || 0) + '</strong></div>';
+          }
+        } catch (err) {
+          showErr(err.message || String(err));
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Abrir painel";
+          }
+        }
+      };
+
+      function bind() {
+        var btn = document.getElementById("btn-login");
+        var input = document.getElementById("admin-password");
+        if (btn) {
+          btn.onclick = function (e) {
+            e.preventDefault();
+            window.__doAdminLogin();
+          };
+        }
+        if (input) {
+          input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              window.__doAdminLogin();
+            }
+          });
+        }
+        debug("Botão pronto. Digite mapa2026 e clique Abrir painel.");
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bind);
+      } else {
+        bind();
+      }
+    })();
+  </script>
 </body>
 </html>

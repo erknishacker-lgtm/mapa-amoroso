@@ -139,6 +139,12 @@ body {
   color: var(--red);
   font-weight: 600;
   font-size: 0.9rem;
+  display: block;
+}
+
+#dash[hidden],
+#login-screen[hidden] {
+  display: none !important;
 }
 
 /* DASH */
