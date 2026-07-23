@@ -1,6 +1,7 @@
 /**
- * Tracking estilo Enlead — 1 linha por lead, colunas = respostas por pergunta
- * Supabase: quiz_leads (upsert) + analytics_events (log)
+ * Analytics Supabase — 1 lead por visitante, progresso e funil.
+ * Nome pode ir ao backend (personalização interna).
+ * Meta Pixel NÃO recebe nome/respostas/padrões.
  */
 (function () {
   var cfg = window.MAPA_CONFIG || {};
@@ -58,6 +59,14 @@
       return new URLSearchParams(location.search).get(name);
     } catch (e) {
       return null;
+    }
+  }
+
+  function storedUtm(k) {
+    try {
+      return qs(k) || sessionStorage.getItem("mapa_" + k) || localStorage.getItem("mapa_" + k);
+    } catch (e) {
+      return qs(k);
     }
   }
 
@@ -177,19 +186,25 @@
       user_agent: ua.user_agent,
       referrer: document.referrer || null,
       landing_url: location.href.slice(0, 1000),
-      utm_source: qs("utm_source"),
-      utm_medium: qs("utm_medium"),
-      utm_campaign: qs("utm_campaign"),
-      utm_content: qs("utm_content"),
-      utm_term: qs("utm_term"),
-      fbclid: qs("fbclid"),
-      gclid: qs("gclid"),
+      utm_source: storedUtm("utm_source"),
+      utm_medium: storedUtm("utm_medium"),
+      utm_campaign: storedUtm("utm_campaign"),
+      utm_content: storedUtm("utm_content"),
+      utm_term: storedUtm("utm_term"),
+      fbclid: storedUtm("fbclid") || qs("fbclid"),
+      gclid: storedUtm("gclid") || qs("gclid"),
       ttclid: qs("ttclid"),
       fbc: cookie("_fbc"),
       fbp: cookie("_fbp"),
       steps: { landing: true },
       answers: {},
-      meta: {},
+      meta: {
+        creative: cfg.creativeId || "",
+        campaign: cfg.campaignId || "",
+        adset: cfg.adsetId || "",
+        headline: cfg.headlineVariant || "A",
+        price: cfg.price || 29.9,
+      },
     };
     Object.assign(row, extra || {});
     return post("quiz_leads", row, "resolution=merge-duplicates,return=minimal").then(function () {
@@ -200,7 +215,6 @@
   function enrichGeo() {
     if (geoDone || !enabled) return;
     geoDone = true;
-    // IP + cidade (best-effort; se falhar, segue sem geo)
     fetch("https://get.geojs.io/v1/ip/geo.json")
       .then(function (r) {
         return r.json();
@@ -218,9 +232,6 @@
   }
 
   function mergeSteps(stepKey) {
-    // steps é jsonb — atualiza via read-modify no client? melhor enviar objeto completo incrementalmente
-    // usamos RPC-less: patch with steps using raw JSON merge not available in REST easily
-    // Estratégia: guardar steps em memória
     if (!mergeSteps._map) mergeSteps._map = { landing: true };
     mergeSteps._map[stepKey] = true;
     return Object.assign({}, mergeSteps._map);
@@ -262,29 +273,17 @@
       logEvent("start");
     },
 
-    profile: function (opts) {
-      opts = opts || {};
-      var steps = mergeSteps("profile");
+    /** Nome opcional após Q3 — não vai ao Meta */
+    name: function (firstName) {
+      var steps = mergeSteps("name");
+      var n = (firstName || "").trim().slice(0, 40) || null;
       queuePatch({
         steps: steps,
-        status: "profile",
-        name: opts.hasName ? opts.name || null : null,
-        sign: opts.sign || null,
-        meta: {
-          hasName: !!opts.hasName,
-          hasSign: !!opts.hasSign,
-          skipped: !!opts.skipped,
-        },
+        status: "in_quiz",
+        name: n,
+        meta: { hasName: !!n },
       });
-      // name from input not always in opts
-      logEvent("profile", {
-        meta: {
-          hasName: !!opts.hasName,
-          hasSign: !!opts.hasSign,
-          skipped: !!opts.skipped,
-          sign: opts.sign || null,
-        },
-      });
+      logEvent("name", { meta: { hasName: !!n } });
     },
 
     questionView: function (q, index) {
@@ -301,16 +300,14 @@
       logEvent("question_view", {
         questionId: q.id,
         stepIndex: index,
-        meta: { axis: q.axis || "", text: q.text || "" },
       });
     },
 
-    questionAnswer: function (q, index, optionIndexes, labels) {
+    questionAnswer: function (q, index, key) {
       if (!q) return;
       var step = (index || 0) + 1;
       var answers = mergeAnswers(q.id, {
-        labels: labels || [],
-        indices: optionIndexes || [],
+        key: key || "",
         at: new Date().toISOString(),
       });
       var steps = mergeSteps(q.id);
@@ -325,19 +322,12 @@
       logEvent("question_answer", {
         questionId: q.id,
         stepIndex: index,
-        optionIds: optionIndexes || [],
-        optionLabels: labels || [],
+        optionIds: [key || ""],
+        optionLabels: [],
       });
     },
 
-    questionNext: function (q, index) {
-      logEvent("question_next", {
-        questionId: q && q.id,
-        stepIndex: index,
-      });
-    },
-
-    result: function (patternId, meta) {
+    result: function (patternId, secondaryId, meta) {
       meta = meta || {};
       var steps = mergeSteps("result");
       queuePatch({
@@ -348,26 +338,41 @@
         pattern_id: patternId || null,
         pattern_name: meta.patternName || null,
         name: meta.name || null,
-        sign: meta.sign || null,
-        max_step_reached: Math.max(12, mergeSteps._max || 0),
-        current_step: 13,
+        max_step_reached: Math.max(9, mergeSteps._max || 0),
+        current_step: 10,
+        meta: {
+          secondary: secondaryId || null,
+          scores: meta.scores || null,
+        },
       });
       logEvent("result", {
         patternId: patternId,
-        meta: meta,
+        meta: { secondary: secondaryId || null },
       });
     },
 
     checkout: function () {
+      var price = (cfg && cfg.price) || 29.9;
       var steps = mergeSteps("checkout");
       queuePatch({
         steps: steps,
         status: "checkout",
         checkout_clicked_at: new Date().toISOString(),
         duration_seconds: durationSec(),
-        current_step: 14,
+        current_step: 11,
       });
-      logEvent("checkout", { meta: { value: 9.97, currency: "BRL" } });
+      logEvent("checkout", { meta: { value: price, currency: "BRL" } });
+    },
+
+    purchase: function (value) {
+      var price = typeof value === "number" ? value : (cfg && cfg.price) || 29.9;
+      queuePatch({
+        steps: mergeSteps("purchase"),
+        status: "purchased",
+        purchased_at: new Date().toISOString(),
+        revenue: price,
+      });
+      logEvent("purchase", { meta: { value: price, currency: "BRL" } });
     },
 
     restart: function () {

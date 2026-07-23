@@ -1,11 +1,13 @@
 /**
- * Meta Pixel helpers — Mapa do Padrão Amoroso
- * ID: 4427665624163520
+ * Meta Pixel — eventos genéricos apenas.
+ * Nunca envia: nome, respostas, padrões emocionais, texto digitado.
  */
 (function () {
-  var PIXEL_ID = "4427665624163520";
-  var PRICE = 9.97;
-  var CURRENCY = "BRL";
+  var cfg = window.MAPA_CONFIG || {};
+  var PIXEL_ID = cfg.metaPixelId || "4427665624163520";
+  var PRICE = typeof cfg.price === "number" ? cfg.price : 29.9;
+  var CURRENCY = cfg.currency || "BRL";
+  var PRODUCT_ID = "mapa-ciclo-amoroso";
   var fired = {};
 
   function ready(fn) {
@@ -36,9 +38,7 @@
       try {
         if (params) window.fbq("track", event, params);
         else window.fbq("track", event);
-      } catch (e) {
-        /* silencioso */
-      }
+      } catch (e) {}
     });
   }
 
@@ -47,10 +47,18 @@
       try {
         if (params) window.fbq("trackCustom", event, params);
         else window.fbq("trackCustom", event);
-      } catch (e) {
-        /* silencioso */
-      }
+      } catch (e) {}
     });
+  }
+
+  function eventId(prefix) {
+    return (
+      prefix +
+      "_" +
+      Date.now().toString(36) +
+      "_" +
+      Math.random().toString(36).slice(2, 10)
+    );
   }
 
   window.MapaPixel = {
@@ -58,157 +66,82 @@
     price: PRICE,
     currency: CURRENCY,
 
-    /** Landing / conteúdo principal */
-    viewContent: function (opts) {
-      track("ViewContent", {
-        content_name: (opts && opts.name) || "Mapa do Padrão Amoroso",
-        content_category: (opts && opts.category) || "landing",
-        content_ids: ["mapa-amoroso"],
-        content_type: "product",
-        value: PRICE,
-        currency: CURRENCY,
+    /** PageView já dispara no snippet; reforço opcional */
+    pageView: function () {
+      once("pageView", function () {
+        track("PageView");
       });
     },
 
-    /** Clicou em começar o mapa */
-    startQuiz: function () {
-      once("startQuiz", function () {
-        track("Lead", {
-          content_name: "Início do mapa",
-          content_category: "quiz_start",
-          value: PRICE,
-          currency: CURRENCY,
-        });
-        trackCustom("StartQuiz", { step: "cta_landing" });
+    /** Clique no primeiro botão (DESCOBRIR MEU CICLO) */
+    quizStart: function () {
+      once("quizStart", function () {
+        trackCustom("QuizStart", { content_ids: [PRODUCT_ID] });
       });
     },
 
-    /** Preencheu ou pulou nome/signo e entrou no quiz */
-    quizBegin: function (opts) {
-      once("quizBegin", function () {
-        track("CompleteRegistration", {
-          content_name: "Perfil do mapa",
-          status: true,
-          value: PRICE,
-          currency: CURRENCY,
-        });
-        trackCustom("QuizBegin", {
-          has_name: !!(opts && opts.hasName),
-          has_sign: !!(opts && opts.hasSign),
-          skipped: !!(opts && opts.skipped),
-        });
+    /** Chegada à pergunta 5 (50% aproximado) */
+    quizProgress50: function () {
+      once("quizProgress50", function () {
+        trackCustom("QuizProgress50", { content_ids: [PRODUCT_ID] });
       });
     },
 
-    /** Progresso no quiz (a cada pergunta avançada) */
-    quizProgress: function (index, total, axis) {
-      var step = index + 1;
-      trackCustom("QuizProgress", {
-        question_index: step,
-        question_total: total,
-        axis: axis || "",
-        percent: Math.round((step / total) * 100),
-      });
-      // Marcos padrão Meta
-      if (step === 1) {
-        once("q1", function () {
-          trackCustom("QuizQuestion1");
-        });
-      }
-      if (step === Math.ceil(total / 2)) {
-        once("qmid", function () {
-          trackCustom("QuizMidpoint", { question: step });
-        });
-      }
-      if (step === total) {
-        once("qlast", function () {
-          trackCustom("QuizLastQuestion", { question: step });
-        });
-      }
-    },
-
-    /** Marcou opção */
-    optionSelect: function (opts) {
-      trackCustom("QuizOptionSelect", {
-        question_index: (opts && opts.index) + 1 || 0,
-        selected_count: (opts && opts.count) || 1,
-      });
-    },
-
-    /** Quiz concluído / gerando resultado */
+    /** Conclusão da pergunta 9 */
     quizComplete: function () {
       once("quizComplete", function () {
-        trackCustom("QuizComplete");
-        track("SubmitApplication", {
-          content_name: "Quiz mapa concluído",
-        });
+        trackCustom("QuizComplete", { content_ids: [PRODUCT_ID] });
       });
     },
 
-    /** Resultado / oferta (pré-compra) */
-    viewResult: function (opts) {
-      once("viewResult", function () {
+    /** Visualização do resultado gratuito */
+    viewContent: function () {
+      once("viewContent", function () {
         track("ViewContent", {
-          content_name: (opts && opts.pattern) || "Resultado do padrão",
-          content_category: "result_offer",
-          content_ids: ["mapa-completo"],
+          content_ids: [PRODUCT_ID],
           content_type: "product",
+          content_name: "Resultado gratuito",
           value: PRICE,
           currency: CURRENCY,
         });
-        trackCustom("ViewResult", {
-          pattern: (opts && opts.pattern) || "",
-          match: (opts && opts.match) || 0,
+      });
+    },
+
+    /** Clique no botão da oferta */
+    initiateCheckout: function () {
+      var eid = eventId("ic");
+      track("InitiateCheckout", {
+        content_ids: [PRODUCT_ID],
+        content_type: "product",
+        content_name: "Mapa Completo",
+        num_items: 1,
+        value: PRICE,
+        currency: CURRENCY,
+        eventID: eid,
+      });
+      return eid;
+    },
+
+    /**
+     * Purchase — só quando pagamento confirmado (página de obrigado / webhook).
+     * Nunca no clique do checkout.
+     */
+    purchase: function (opts) {
+      opts = opts || {};
+      var value = typeof opts.value === "number" ? opts.value : PRICE;
+      var eid = opts.eventId || eventId("pur");
+      once("purchase_" + eid, function () {
+        track("Purchase", {
+          content_ids: [opts.productId || PRODUCT_ID],
+          content_type: "product",
+          content_name: "Mapa Completo",
+          num_items: 1,
+          value: value,
+          currency: CURRENCY,
+          eventID: eid,
         });
       });
-    },
-
-    /** Clicou para pagar / desbloquear */
-    initiateCheckout: function () {
-      track("InitiateCheckout", {
-        content_name: "Mapa completo",
-        content_ids: ["mapa-completo"],
-        content_type: "product",
-        num_items: 1,
-        value: PRICE,
-        currency: CURRENCY,
-      });
-      track("AddToCart", {
-        content_name: "Mapa completo",
-        content_ids: ["mapa-completo"],
-        content_type: "product",
-        value: PRICE,
-        currency: CURRENCY,
-      });
-      // Clique no checkout = intenção de compra (Lastlink conclui fora)
-      track("Purchase", {
-        content_name: "Mapa completo",
-        content_ids: ["mapa-completo"],
-        content_type: "product",
-        num_items: 1,
-        value: PRICE,
-        currency: CURRENCY,
-      });
-      trackCustom("ClickCheckout", {
-        url: "https://lastlink.com/p/C53821E2C/checkout-payment/",
-        value: PRICE,
-        currency: CURRENCY,
-      });
-    },
-
-    /** Reiniciou o fluxo */
-    restart: function () {
-      trackCustom("QuizRestart");
-    },
-
-    /** Página de pagamento interna */
-    viewPay: function () {
-      trackCustom("ViewPayPage");
+      return eid;
     },
   };
-
-  // Landing ViewContent (além do PageView do snippet)
-  ready(function () {
-    window.MapaPixel.viewContent({ name: "Landing Mapa Amoroso", category: "landing" });
-  });
 })();

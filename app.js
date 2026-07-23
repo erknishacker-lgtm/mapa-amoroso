@@ -1,677 +1,878 @@
+/**
+ * Mapa do Ciclo Amoroso — fluxo do quiz
+ * Abertura → 9 perguntas (nome após Q3, mid após Q6) → processamento → resultado → oferta
+ */
 (function () {
-  const D = window.MAPA_DATA;
-  const M = window.MapaMotion || {
-    prefersReduced: () => false,
-    transitionTo: (fn) => fn(),
-    staggerIn: () => {},
-    ripple: () => {},
-    countUp: (el, n) => {
-      if (el) el.textContent = String(n);
+  var D = window.MAPA_DATA;
+  var C = window.MAPA_CONFIG || {};
+  var M = window.MapaMotion || {
+    prefersReduced: function () {
+      return false;
     },
-    fillBar: (el, p) => {
-      if (el) el.style.width = p + "%";
+    transitionTo: function (fn) {
+      fn();
     },
-    pulseOnce: () => {},
-    nudge: () => {},
+    staggerIn: function () {},
+    ripple: function () {},
   };
-  const Px = window.MapaPixel || {
-    viewContent: function () {},
-    startQuiz: function () {},
-    quizBegin: function () {},
-    quizProgress: function () {},
-    optionSelect: function () {},
+  var Px = window.MapaPixel || {
+    quizStart: function () {},
+    quizProgress50: function () {},
     quizComplete: function () {},
-    viewResult: function () {},
+    viewContent: function () {},
     initiateCheckout: function () {},
-    restart: function () {},
-    viewPay: function () {},
   };
-  const Ax = window.MapaAnalytics || {
+  var Ax = window.MapaAnalytics || {
     landing: function () {},
     start: function () {},
-    profile: function () {},
+    name: function () {},
     questionView: function () {},
     questionAnswer: function () {},
-    questionNext: function () {},
     result: function () {},
     checkout: function () {},
-    restart: function () {},
     flush: function () {},
   };
 
   if (!D) return;
 
-  /** Checkout real — R$ 9,97 (Lastlink) */
-  const CHECKOUT_URL = "https://lastlink.com/p/C53821E2C/checkout-payment/";
+  var STORAGE_KEY = "mapa_ciclo_progress_v1";
+  var TOTAL_Q = D.questions.length; // 9
 
-  function openCheckout() {
-    Px.initiateCheckout();
-    window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer");
-  }
-
-  const state = {
-    index: 0,
-    answers: [],
-    scores: { anxious: 0, savior: 0, intensity: 0, silence: 0, familiar: 0 },
-    patternId: null,
-    multiSelected: new Set(),
-    matchStrength: 0,
+  var state = {
+    screen: "open", // open | quiz | name | mid | process | result | offer
+    qIndex: 0, // 0..8
+    answers: {}, // q1..q9 -> A|B|C|D
+    scores: { A: 0, B: 0, C: 0, D: 0 },
     name: "",
-    sign: "",
+    primary: null,
+    secondary: null,
+    advancing: false,
   };
 
-  const pages = {
-    home: document.getElementById("page-home"),
-    profile: document.getElementById("page-profile"),
+  var pages = {
+    open: document.getElementById("page-open"),
     quiz: document.getElementById("page-quiz"),
-    loading: document.getElementById("page-loading"),
-    partial: document.getElementById("page-partial"),
-    pay: document.getElementById("page-pay"),
-    full: document.getElementById("page-full"),
+    name: document.getElementById("page-name"),
+    mid: document.getElementById("page-mid"),
+    process: document.getElementById("page-process"),
+    result: document.getElementById("page-result"),
+    offer: document.getElementById("page-offer"),
   };
 
-  const elImg = document.getElementById("quiz-image");
-  const elImgWrap = document.getElementById("quiz-image-wrap");
-  const elAxis = document.getElementById("quiz-axis");
-  const elQuestion = document.getElementById("quiz-question");
-  const elHelp = document.getElementById("quiz-help");
-  const elOptions = document.getElementById("quiz-options");
-  const elFill = document.getElementById("quiz-progress-fill");
-  const elMultiBar = document.getElementById("quiz-multi-bar");
-  const elMultiNext = document.getElementById("btn-multi-next");
-  const elMultiHint = document.getElementById("quiz-multi-hint");
-  const elQuizInner = document.getElementById("quiz-inner");
-  const elCtaBar = document.getElementById("offer-cta-bar");
-  const elLandSticky = document.getElementById("land-sticky");
-  const elName = document.getElementById("input-name");
-  const elSignGrid = document.getElementById("sign-grid");
-  const elStartInline = document.getElementById("btn-start");
+  var el = {
+    progress: document.getElementById("quiz-progress"),
+    progressFill: document.getElementById("quiz-progress-fill"),
+    progressLabel: document.getElementById("quiz-progress-label"),
+    question: document.getElementById("quiz-question"),
+    options: document.getElementById("quiz-options"),
+    btnBack: document.getElementById("btn-back"),
+    nameInput: document.getElementById("input-name"),
+    processMsg: document.getElementById("process-msg"),
+    processDims: document.getElementById("process-dims"),
+    processDone: document.getElementById("process-done"),
+    cookieBanner: document.getElementById("cookie-banner"),
+  };
 
-  function setLandSticky(on) {
-    if (!elLandSticky) return;
-    if (on) {
-      elLandSticky.hidden = false;
-      requestAnimationFrame(function () {
-        elLandSticky.classList.add("is-visible");
+  /* ─── helpers ─── */
+
+  function money(n) {
+    return (
+      "R$ " +
+      Number(n)
+        .toFixed(2)
+        .replace(".", ",")
+    );
+  }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          screen: state.screen,
+          qIndex: state.qIndex,
+          answers: state.answers,
+          scores: state.scores,
+          name: state.name,
+          primary: state.primary,
+          secondary: state.secondary,
+          ts: Date.now(),
+        })
+      );
+    } catch (e) {}
+  }
+
+  function loadProgress() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (!data || !data.ts) return null;
+      // expira em 7 dias
+      if (Date.now() - data.ts > 7 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(STORAGE_KEY);
+        return null;
+      }
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearProgress() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+  }
+
+  function showPage(name, direction) {
+    function apply() {
+      Object.keys(pages).forEach(function (key) {
+        var p = pages[key];
+        if (!p) return;
+        var on = key === name;
+        p.classList.toggle("is-hidden", !on);
+        if (on) p.removeAttribute("hidden");
+        else p.setAttribute("hidden", "");
       });
-    } else {
-      elLandSticky.classList.remove("is-visible");
-      window.setTimeout(function () {
-        if (!elLandSticky.classList.contains("is-visible")) {
-          elLandSticky.hidden = true;
-        }
-      }, 360);
+      // barra de progresso só no quiz
+      if (el.progress) {
+        var showBar = name === "quiz";
+        el.progress.classList.toggle("is-hidden", !showBar);
+        el.progress.hidden = !showBar;
+      }
+      window.scrollTo(0, 0);
+      state.screen = name;
+      saveProgress();
     }
+    if (M.transitionTo) M.transitionTo(apply, direction);
+    else apply();
   }
 
-  function updateLandStickyByScroll() {
-    if (!pages.home || pages.home.classList.contains("is-hidden") || pages.home.hasAttribute("hidden")) {
-      setLandSticky(false);
-      return;
-    }
-    // Sempre visível no topo; some só quando o CTA do final já está na tela
-    if (!elStartInline) {
-      setLandSticky(true);
-      return;
-    }
-    const rect = elStartInline.getBoundingClientRect();
-    const vh = window.innerHeight || 0;
-    const inlineOnScreen = rect.top < vh - 72 && rect.bottom > 60;
-    setLandSticky(!inlineOnScreen);
-  }
+  /* ─── scoring ─── */
 
-  function show(name) {
-    Object.keys(pages).forEach((key) => {
-      const el = pages[key];
-      if (!el) return;
-      const on = key === name;
-      el.classList.toggle("is-hidden", !on);
-      if (on) el.removeAttribute("hidden");
-      else el.setAttribute("hidden", "");
+  function recomputeScores() {
+    var s = { A: 0, B: 0, C: 0, D: 0 };
+    D.questions.forEach(function (q) {
+      var k = state.answers[q.id];
+      if (k && s[k] !== undefined) s[k] += 2;
     });
-    window.scrollTo(0, 0);
+    state.scores = s;
+  }
 
-    if (name === "home") {
-      setLandSticky(true);
-      requestAnimationFrame(() => {
-        const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
-        if (wrap) M.staggerIn(wrap, "[data-stagger]");
-        updateLandStickyByScroll();
-      });
-    } else {
-      setLandSticky(false);
-    }
-    if (name === "profile") {
-      renderSigns();
-      if (elName) {
-        window.setTimeout(() => elName.focus({ preventScroll: true }), 280);
+  function resolvePatterns() {
+    recomputeScores();
+    var keys = ["A", "B", "C", "D"];
+    var sorted = keys.slice().sort(function (a, b) {
+      return state.scores[b] - state.scores[a];
+    });
+
+    var top = sorted[0];
+    var tied = keys.filter(function (k) {
+      return state.scores[k] === state.scores[top];
+    });
+
+    if (tied.length > 1) {
+      // tiebreak: Q6 → Q8 → Q1
+      var order = ["q6", "q8", "q1"];
+      for (var i = 0; i < order.length; i++) {
+        var ans = state.answers[order[i]];
+        if (ans && tied.indexOf(ans) !== -1) {
+          top = ans;
+          break;
+        }
       }
     }
-    if (name === "partial") {
-      requestAnimationFrame(() => {
-        const wrap = document.querySelector(".offer-wrap");
-        if (wrap) M.staggerIn(wrap, "[data-stagger]");
-        if (elCtaBar) {
-          window.setTimeout(() => elCtaBar.classList.add("is-visible"), 400);
-        }
-        window.setTimeout(() => {
-          M.pulseOnce(document.getElementById("btn-unlock"));
-        }, 1200);
-      });
-    } else if (elCtaBar) {
-      elCtaBar.classList.remove("is-visible");
-    }
-    if (name === "pay") {
-      Px.viewPay();
-    }
-    if (name === "full") {
-      requestAnimationFrame(() => {
-        const wrap = document.querySelector(".full-wrap");
-        if (wrap) M.staggerIn(wrap, "[data-stagger]");
-      });
-    }
-  }
 
-  function go(name, direction) {
-    M.transitionTo(() => show(name), direction);
-  }
-
-  function resetScores() {
-    state.scores = { anxious: 0, savior: 0, intensity: 0, silence: 0, familiar: 0 };
-    state.answers = [];
-    state.index = 0;
-    state.patternId = null;
-    state.multiSelected = new Set();
-    state.matchStrength = 0;
-  }
-
-  function applyScores(scores, direction) {
-    const dir = direction || 1;
-    Object.keys(scores || {}).forEach((k) => {
-      state.scores[k] = Math.max(0, (state.scores[k] || 0) + dir * scores[k]);
+    var secondary = null;
+    var maxSec = -1;
+    keys.forEach(function (k) {
+      if (k === top) return;
+      if (state.scores[k] > maxSec) {
+        maxSec = state.scores[k];
+        secondary = k;
+      }
     });
+
+    state.primary = top;
+    state.secondary = secondary;
+    return { primary: top, secondary: secondary };
   }
 
-  function unapplyAnswer(q, answer) {
-    if (answer == null || !q) return;
-    if (Array.isArray(answer)) {
-      answer.forEach((i) => {
-        if (q.options[i]) applyScores(q.options[i].scores, -1);
-      });
+  /* ─── open ─── */
+
+  function renderOpen() {
+    var variant = C.headlineVariant === "B" ? "B" : "A";
+    var open = D.open[variant] || D.open.A;
+    var titleEl = document.getElementById("open-title");
+    var subEl = document.getElementById("open-subtitle");
+    var supportEl = document.getElementById("open-support");
+    var bulletsEl = document.getElementById("open-bullets");
+    var ctaEl = document.getElementById("btn-start");
+
+    if (titleEl) titleEl.textContent = open.title;
+    if (subEl) subEl.textContent = open.subtitle;
+    if (supportEl) {
+      supportEl.innerHTML =
+        "<p class=\"open-support-lead\">Responda a nove perguntas e descubra:</p><ul>" +
+        D.open.support
+          .map(function (t) {
+            return "<li>" + t + "</li>";
+          })
+          .join("") +
+        "</ul>";
     }
-  }
-
-  function rebuildScoresUntil(exclusiveEnd) {
-    state.scores = { anxious: 0, savior: 0, intensity: 0, silence: 0, familiar: 0 };
-    for (let i = 0; i < exclusiveEnd; i++) {
-      const q = D.questions[i];
-      const a = state.answers[i];
-      if (!Array.isArray(a)) continue;
-      a.forEach((idx) => applyScores(q.options[idx].scores, 1));
+    if (bulletsEl) {
+      bulletsEl.innerHTML = D.open.bullets
+        .map(function (b) {
+          return (
+            '<span class="chip"><span class="chip-dot" aria-hidden="true"></span>' +
+            b +
+            "</span>"
+          );
+        })
+        .join("");
     }
+    if (ctaEl) ctaEl.textContent = D.open.cta;
+    showPage("open");
   }
 
-  function renderSigns() {
-    if (!elSignGrid) return;
-    elSignGrid.innerHTML = "";
-    (D.signs || []).forEach((s) => {
-      const name = typeof s === "string" ? s : s.name;
-      const symbol = typeof s === "string" ? "" : s.symbol || "";
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "sign-chip" + (state.sign === name ? " is-selected" : "");
-      btn.setAttribute("role", "option");
-      btn.setAttribute("aria-selected", state.sign === name ? "true" : "false");
-      btn.setAttribute("aria-label", name);
-      btn.innerHTML =
-        '<span class="sign-symbol" aria-hidden="true"></span>' +
-        '<span class="sign-name"></span>';
-      btn.querySelector(".sign-symbol").textContent = symbol;
-      btn.querySelector(".sign-name").textContent = name;
-      btn.addEventListener("click", () => {
-        if (state.sign === name) {
-          state.sign = "";
-        } else {
-          state.sign = name;
-        }
-        renderSigns();
-      });
-      elSignGrid.appendChild(btn);
-    });
+  function startQuiz() {
+    Px.quizStart();
+    Ax.start();
+    state.qIndex = 0;
+    state.answers = {};
+    state.scores = { A: 0, B: 0, C: 0, D: 0 };
+    state.primary = null;
+    state.secondary = null;
+    state.name = "";
+    renderQuestion();
   }
 
-  function saveProfile() {
-    state.name = (elName && elName.value ? elName.value : "").trim();
+  /* ─── quiz ─── */
+
+  function progressPercent() {
+    // 0 after start, 100 after Q9 answered
+    var answered = Object.keys(state.answers).length;
+    return Math.min(100, Math.round((answered / TOTAL_Q) * 100));
   }
 
-  function displayName() {
-    return state.name || "";
+  function updateProgressBar() {
+    var pct = Math.max(progressPercent(), Math.round(((state.qIndex + 0.15) / TOTAL_Q) * 100));
+    pct = Math.min(100, pct);
+    if (el.progressFill) el.progressFill.style.width = pct + "%";
+    if (el.progressLabel) {
+      el.progressLabel.textContent = "Pergunta " + (state.qIndex + 1) + " de " + TOTAL_Q;
+    }
   }
 
   function renderQuestion() {
-    const q = D.questions[state.index];
-    const total = D.questions.length;
+    var q = D.questions[state.qIndex];
+    if (!q) return;
 
-    elQuizInner.classList.remove("is-swap");
-    void elQuizInner.offsetWidth;
-    elQuizInner.classList.add("is-swap");
+    showPage("quiz");
+    updateProgressBar();
 
-    elAxis.textContent = q.axis;
-    elQuestion.textContent = q.text;
-    elHelp.textContent = q.help || "Marque o que combina · pode ser mais de um";
-    elFill.style.width = Math.round((state.index / total) * 100) + "%";
-    Px.quizProgress(state.index, total, q.axis);
-    Ax.questionView(q, state.index);
-
-    if (q.image) {
-      elImgWrap.hidden = false;
-      elImgWrap.classList.remove("is-ready");
-      elImg.onload = () => elImgWrap.classList.add("is-ready");
-      elImg.src = q.image;
-      elImg.alt = q.imageAlt || "";
-      if (elImg.complete) elImgWrap.classList.add("is-ready");
-    } else {
-      elImgWrap.hidden = true;
-    }
-
-    state.multiSelected = new Set();
-    if (Array.isArray(state.answers[state.index])) {
-      state.answers[state.index].forEach((i) => state.multiSelected.add(i));
-    }
-
-    elOptions.innerHTML = "";
-    q.options.forEach((opt, i) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "opt opt-check";
-      btn.style.setProperty("--i", String(i));
-      btn.setAttribute("role", "checkbox");
-      const selected = state.multiSelected.has(i);
-      btn.classList.toggle("is-selected", selected);
-      btn.setAttribute("aria-checked", selected ? "true" : "false");
-      btn.innerHTML =
-        '<span class="check-box" aria-hidden="true"></span><span class="opt-label"></span>';
-      btn.querySelector(".opt-label").textContent = opt.label;
-      btn.addEventListener("click", (e) => {
-        M.ripple(e, btn);
-        toggleMulti(i, btn);
+    if (el.question) el.question.textContent = q.text;
+    if (el.options) {
+      el.options.innerHTML = "";
+      q.options.forEach(function (opt) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "opt-btn";
+        btn.setAttribute("data-key", opt.key);
+        btn.innerHTML = '<span class="opt-text">' + opt.label + "</span>";
+        if (state.answers[q.id] === opt.key) btn.classList.add("is-selected");
+        btn.addEventListener("click", function (e) {
+          onSelectOption(opt.key, btn, e);
+        });
+        el.options.appendChild(btn);
       });
-      elOptions.appendChild(btn);
-    });
-
-    elMultiBar.hidden = false;
-    elMultiHint.textContent =
-      q.minSelect === 0 || q.allowEmpty
-        ? "Marque o que quiser · pode continuar sem marcar"
-        : "Marque pelo menos uma opção · pode marcar várias";
-    updateMultiNext();
-  }
-
-  function scrollToContinue() {
-    if (!elMultiBar) return;
-    // Espera o layout do botão habilitado/atualizar antes de rolar
-    requestAnimationFrame(() => {
-      elMultiBar.scrollIntoView({
-        behavior: M.prefersReduced() ? "auto" : "smooth",
-        block: "end",
-      });
-    });
-  }
-
-  function toggleMulti(i, btn) {
-    const wasOn = state.multiSelected.has(i);
-    if (wasOn) state.multiSelected.delete(i);
-    else state.multiSelected.add(i);
-    const on = state.multiSelected.has(i);
-    btn.classList.toggle("is-selected", on);
-    btn.setAttribute("aria-checked", on ? "true" : "false");
-    updateMultiNext();
-    if (on) {
-      Px.optionSelect({ index: state.index, count: state.multiSelected.size });
-      scrollToContinue();
+      if (M.staggerIn) M.staggerIn(el.options, ".opt-btn");
     }
+
+    if (el.btnBack) {
+      el.btnBack.hidden = state.qIndex === 0 && !state.answers.q1;
+      // permitir voltar se não for a primeira ou se veio de name/mid
+      el.btnBack.hidden = false;
+      if (state.qIndex === 0) {
+        // na Q1, voltar vai para abertura
+        el.btnBack.hidden = false;
+      }
+    }
+
+    Ax.questionView(q, state.qIndex);
+
+    // milestones
+    if (state.qIndex === 4) Px.quizProgress50(); // Q5 (index 4)
   }
 
-  function updateMultiNext() {
-    const q = D.questions[state.index];
-    const min = q.minSelect != null ? q.minSelect : 1;
-    const n = state.multiSelected.size;
-    const ok = n >= min || q.allowEmpty;
-    elMultiNext.disabled = !ok;
-    const label = elMultiNext.querySelector(".btn-label") || elMultiNext;
-    if (n === 0 && q.allowEmpty) label.textContent = "Continuar";
-    else if (n === 0) label.textContent = "Continuar";
-    else label.textContent = "Continuar · " + n + " marcada" + (n === 1 ? "" : "s");
+  function onSelectOption(key, btn, e) {
+    if (state.advancing) return;
+    state.advancing = true;
+
+    var q = D.questions[state.qIndex];
+    state.answers[q.id] = key;
+    recomputeScores();
+    Ax.questionAnswer(q, state.qIndex, key);
+    saveProgress();
+
+    if (e && M.ripple) M.ripple(e, btn);
+    var all = el.options ? el.options.querySelectorAll(".opt-btn") : [];
+    all.forEach(function (b) {
+      b.classList.remove("is-selected");
+      b.disabled = true;
+    });
+    if (btn) btn.classList.add("is-selected", "is-confirm");
+
+    var delay = M.prefersReduced && M.prefersReduced() ? 80 : 380;
+    window.setTimeout(function () {
+      state.advancing = false;
+      advanceFromQuestion();
+    }, delay);
   }
 
-  function confirmMulti() {
-    const q = D.questions[state.index];
-    const min = q.minSelect != null ? q.minSelect : 1;
-    if (state.multiSelected.size < min && !q.allowEmpty) {
-      M.nudge(elMultiBar);
+  function advanceFromQuestion() {
+    var idx = state.qIndex;
+
+    // após Q3 (index 2) → nome
+    if (idx === 2) {
+      renderNameGate();
+      return;
+    }
+    // após Q6 (index 5) → mid
+    if (idx === 5) {
+      renderMid();
+      return;
+    }
+    // após Q9 (index 8) → process
+    if (idx === 8) {
+      Px.quizComplete();
+      startProcessing();
       return;
     }
 
-    unapplyAnswer(q, state.answers[state.index]);
-    const idxs = Array.from(state.multiSelected).sort((a, b) => a - b);
-    state.answers[state.index] = idxs;
-    idxs.forEach((i) => applyScores(q.options[i].scores, 1));
-    const labels = idxs.map((i) => (q.options[i] && q.options[i].label) || String(i));
-    Ax.questionAnswer(q, state.index, idxs, labels);
-    Ax.questionNext(q, state.index);
-    advance();
-  }
-
-  function advance() {
-    if (state.index < D.questions.length - 1) {
-      state.index += 1;
-      renderQuestion();
-      window.scrollTo({ top: 0, behavior: M.prefersReduced() ? "auto" : "smooth" });
-    } else {
-      finishQuiz();
-    }
-  }
-
-  function winningPattern() {
-    let best = "anxious";
-    let max = -1;
-    let total = 0;
-    Object.keys(state.scores).forEach((k) => {
-      total += state.scores[k];
-      if (state.scores[k] > max) {
-        max = state.scores[k];
-        best = k;
-      }
-    });
-    const ratio = total > 0 ? max / total : 0.5;
-    state.matchStrength = Math.round(62 + ratio * 33);
-    return best;
-  }
-
-  function finishQuiz() {
-    Px.quizComplete();
-    Ax.flush();
-    go("loading");
-    const steps = [
-      "Lendo o que você marcou…",
-      "Cruzando gatilhos e repetições…",
-      "Identificando o padrão dominante…",
-      "Montando o esboço do seu mapa…",
-    ];
-    const ticks = document.querySelectorAll("#loading-ticks [data-tick]");
-    ticks.forEach((t) => t.classList.remove("is-done"));
-
-    let i = 0;
-    const sub = document.getElementById("loading-sub");
-    sub.textContent = steps[0];
-
-    const t = window.setInterval(() => {
-      if (i < ticks.length) ticks[i].classList.add("is-done");
-      i += 1;
-      if (i < steps.length) sub.textContent = steps[i];
-    }, 620);
-
-    window.setTimeout(() => {
-      window.clearInterval(t);
-      ticks.forEach((x) => x.classList.add("is-done"));
-      state.patternId = winningPattern();
-      renderPartial();
-      go("partial");
-    }, 3400);
-  }
-
-  function pattern() {
-    return D.patterns[state.patternId] || D.patterns.anxious;
-  }
-
-  function renderPartial() {
-    const p = pattern();
-    const n = displayName();
-    const signBit = state.sign ? " · " + state.sign : "";
-
-    document.getElementById("partial-name").textContent = p.name;
-    document.getElementById("partial-summary").textContent = p.partialSummary;
-
-    let personal = p.offerPersonal || "Suas respostas formam um desenho claro.";
-    if (n) {
-      personal = n + signBit + " — " + personal;
-    } else if (state.sign) {
-      personal = state.sign + " — " + personal;
-    }
-    document.getElementById("offer-personal").textContent = personal;
-    document.getElementById("offer-hook").textContent =
-      p.offerHook ||
-      "Você já nomeou o ciclo. O mapa completo mostra como interrompê-lo antes da próxima escolha.";
-
-    const ul = document.getElementById("partial-bullets");
-    ul.innerHTML = "";
-    p.partialBullets.forEach((t, i) => {
-      const li = document.createElement("li");
-      li.textContent = t;
-      li.style.setProperty("--i", String(i));
-      ul.appendChild(li);
-    });
-
-    // Bloco principal sob "Seu mapa completo contém"
-    const snapPattern = document.getElementById("snapshot-pattern");
-    const snapLead = document.getElementById("snapshot-lead");
-    const snapBullets = document.getElementById("snapshot-bullets");
-    if (snapPattern) snapPattern.textContent = p.name;
-    if (snapLead) {
-      if (n) {
-        snapLead.textContent =
-          n +
-          (state.sign ? " (" + state.sign + ")" : "") +
-          ": este é o núcleo do que suas marcações revelaram — o ponto de partida do mapa.";
-      } else {
-        snapLead.textContent =
-          "Este é o núcleo do que suas marcações revelaram — o ponto de partida do mapa.";
-      }
-    }
-    if (snapBullets) {
-      snapBullets.innerHTML = "";
-      p.partialBullets.forEach((t) => {
-        const li = document.createElement("li");
-        li.textContent = t;
-        snapBullets.appendChild(li);
-      });
-    }
-
-    const peekTitle = document.getElementById("peek-pattern-title");
-    const peekText = document.getElementById("peek-pattern-text");
-    if (peekTitle) peekTitle.textContent = p.name;
-    if (peekText) {
-      peekText.textContent = "Ciclo ativo nas suas respostas — a base do mapa.";
-    }
-
-    const chapters = p.chapters || [];
-    const list = document.getElementById("chapter-list");
-    list.innerHTML = "";
-    chapters.forEach((ch, i) => {
-      const li = document.createElement("li");
-      li.className = "chapter-item " + (ch.free ? "is-free" : "is-locked");
-      li.style.setProperty("--i", String(i));
-      li.innerHTML =
-        '<span class="chapter-icon" aria-hidden="true">' +
-        (ch.free ? "✓" : "·") +
-        "</span>" +
-        '<div class="chapter-body"><h4></h4><p></p></div>' +
-        '<span class="chapter-tag"></span>';
-      li.querySelector("h4").textContent = ch.title;
-      li.querySelector("p").textContent = ch.teaser || "";
-      li.querySelector(".chapter-tag").textContent = ch.free ? "Livre" : "Bloqueado";
-      list.appendChild(li);
-    });
-
-    const pct = state.matchStrength || 78;
-    M.countUp(document.getElementById("match-pct"), pct, 1000);
-    M.fillBar(document.getElementById("match-fill"), pct, 1.1);
-
-    const mapPct = 28 + Math.round((pct - 60) * 0.25);
-    const mapShown = Math.min(38, Math.max(28, mapPct));
-    M.countUp(document.getElementById("map-pct"), mapShown, 1100);
-    M.fillBar(document.getElementById("map-fill"), mapShown, 1.2);
-
-    document.getElementById("match-note").textContent =
-      pct >= 80
-        ? "Padrão forte e repetido nas suas marcações."
-        : "Padrão identificável; o mapa completo aprofunda onde ele se instala.";
-
-    Px.viewResult({ pattern: p.name, match: pct });
-    Ax.result(state.patternId, {
-      patternName: p.name,
-      match: pct,
-      name: displayName() || null,
-      sign: state.sign || null,
-    });
-  }
-
-  function fillList(id, items) {
-    const el = document.getElementById(id);
-    el.innerHTML = "";
-    items.forEach((t) => {
-      const li = document.createElement("li");
-      li.textContent = t;
-      el.appendChild(li);
-    });
-  }
-
-  function renderFull() {
-    const p = pattern();
-    const n = displayName();
-    document.getElementById("full-name").textContent =
-      (n ? n + " · " : "") + p.name + (state.sign ? " · " + state.sign : "");
-    document.getElementById("full-mirror").textContent = p.mirror;
-    document.getElementById("full-what").textContent = p.what;
-    document.getElementById("full-how").textContent = p.how;
-    fillList("full-triggers", p.triggers);
-    fillList("full-beliefs", p.beliefs);
-    fillList("full-signals", p.signals);
-    fillList("full-criteria", p.criteria);
-
-    const tech = document.getElementById("full-techniques");
-    tech.innerHTML = "";
-    p.techniques.forEach((item) => {
-      const div = document.createElement("div");
-      div.className = "tech";
-      div.innerHTML =
-        "<h4>" + escapeHtml(item.title) + "</h4><p>" + escapeHtml(item.body) + "</p>";
-      tech.appendChild(div);
-    });
-  }
-
-  function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest(".btn-ripple");
-    if (btn && !btn.disabled) M.ripple(e, btn);
-  });
-
-  function startFromLanding() {
-    Px.startQuiz();
-    Ax.start();
-    go("profile");
-  }
-
-  document.getElementById("btn-start").addEventListener("click", startFromLanding);
-  var btnSticky = document.getElementById("btn-start-sticky");
-  if (btnSticky) {
-    btnSticky.addEventListener("click", startFromLanding);
-  }
-
-  window.addEventListener(
-    "scroll",
-    function () {
-      updateLandStickyByScroll();
-    },
-    { passive: true }
-  );
-  window.addEventListener("resize", updateLandStickyByScroll);
-
-  document.getElementById("btn-profile-back").addEventListener("click", () => {
-    go("home", "back");
-  });
-
-  document.getElementById("btn-profile-next").addEventListener("click", () => {
-    saveProfile();
-    resetScores();
-    Px.quizBegin({
-      hasName: !!state.name,
-      hasSign: !!state.sign,
-      skipped: false,
-    });
-    Ax.profile({
-      hasName: !!state.name,
-      name: state.name || null,
-      hasSign: !!state.sign,
-      skipped: false,
-      sign: state.sign || null,
-    });
-    go("quiz");
-    window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
-  });
-
-  document.getElementById("btn-profile-skip").addEventListener("click", () => {
-    state.name = "";
-    state.sign = "";
-    if (elName) elName.value = "";
-    resetScores();
-    Px.quizBegin({ hasName: false, hasSign: false, skipped: true });
-    Ax.profile({ hasName: false, hasSign: false, skipped: true, sign: null });
-    go("quiz");
-    window.setTimeout(() => renderQuestion(), M.prefersReduced() ? 0 : 180);
-  });
-
-  document.getElementById("btn-quiz-back").addEventListener("click", () => {
-    if (state.index === 0) {
-      go("profile", "back");
-      return;
-    }
-    const cur = D.questions[state.index];
-    unapplyAnswer(cur, state.answers[state.index]);
-    state.answers[state.index] = undefined;
-    const prev = state.index - 1;
-    rebuildScoresUntil(prev);
-    state.index = prev;
+    state.qIndex = idx + 1;
     renderQuestion();
-  });
+  }
 
-  elMultiNext.addEventListener("click", confirmMulti);
+  function goBack() {
+    if (state.advancing) return;
+    var scr = state.screen;
 
-  // CTAs de pagamento Lastlink + pixel + analytics
-  document.addEventListener("click", (e) => {
-    const pay = e.target.closest("#btn-unlock, #btn-pay-demo, a[href*='lastlink.com']");
-    if (pay) {
-      Px.initiateCheckout();
-      Ax.checkout();
-      Ax.flush();
+    if (scr === "name") {
+      state.qIndex = 2;
+      renderQuestion();
+      return;
     }
-  });
+    if (scr === "mid") {
+      state.qIndex = 5;
+      renderQuestion();
+      return;
+    }
+    if (scr === "quiz") {
+      if (state.qIndex === 0) {
+        renderOpen();
+        return;
+      }
+      // se está em Q4 (index 3), voltar pode ir pro name
+      if (state.qIndex === 3) {
+        renderNameGate();
+        return;
+      }
+      // se está em Q7 (index 6), voltar para mid
+      if (state.qIndex === 6) {
+        renderMid();
+        return;
+      }
+      state.qIndex = state.qIndex - 1;
+      renderQuestion();
+      return;
+    }
+    if (scr === "offer") {
+      renderResult();
+      return;
+    }
+    if (scr === "result") {
+      // não volta ao process; reinicia opcionalmente
+      return;
+    }
+  }
 
-  document.getElementById("btn-pay-back").addEventListener("click", () => {
-    go("partial", "back");
-  });
+  /* ─── name gate ─── */
 
-  document.getElementById("btn-restart").addEventListener("click", () => {
-    Px.restart();
-    Ax.restart();
-    resetScores();
-    state.name = "";
-    state.sign = "";
-    if (elName) elName.value = "";
-    go("home", "back");
-  });
+  function renderNameGate() {
+    showPage("name");
+    var title = document.getElementById("name-title");
+    var ask = document.getElementById("name-ask");
+    var help = document.getElementById("name-help");
+    var cta = document.getElementById("btn-name-continue");
+    if (title) title.textContent = D.nameGate.title;
+    if (ask) ask.textContent = D.nameGate.ask;
+    if (help) help.textContent = D.nameGate.help;
+    if (cta) cta.textContent = D.nameGate.cta;
+    if (el.nameInput) {
+      el.nameInput.value = state.name || "";
+      window.setTimeout(function () {
+        try {
+          el.nameInput.focus({ preventScroll: true });
+        } catch (e) {}
+      }, 280);
+    }
+  }
 
-  show("home");
-  Ax.landing();
-  requestAnimationFrame(() => {
-    const wrap = document.querySelector(".landing") || document.querySelector(".home-wrap");
-    if (wrap) M.staggerIn(wrap, "[data-stagger]");
-  });
+  function continueFromName() {
+    var raw = el.nameInput ? el.nameInput.value : "";
+    state.name = (raw || "").trim().slice(0, 40);
+    // Analytics interno pode guardar nome; Meta NÃO
+    Ax.name(state.name);
+    saveProgress();
+    state.qIndex = 3; // Q4
+    renderQuestion();
+  }
+
+  /* ─── mid ─── */
+
+  function renderMid() {
+    showPage("mid");
+    var title = document.getElementById("mid-title");
+    var body = document.getElementById("mid-body");
+    var cta = document.getElementById("btn-mid-continue");
+    if (title) title.textContent = D.mid.title;
+    if (body) {
+      body.innerHTML =
+        D.mid.lines.map(function (l) {
+          return "<p>" + l + "</p>";
+        }).join("") +
+        "<ul>" +
+        D.mid.bullets
+          .map(function (b) {
+            return "<li>" + b + "</li>";
+          })
+          .join("") +
+        "</ul>" +
+        '<p class="mid-footer">' +
+        D.mid.footer +
+        "</p>";
+    }
+    if (cta) cta.textContent = D.mid.cta;
+  }
+
+  function continueFromMid() {
+    state.qIndex = 6; // Q7
+    renderQuestion();
+  }
+
+  /* ─── processing ─── */
+
+  function startProcessing() {
+    showPage("process");
+    if (el.processDone) el.processDone.hidden = true;
+    if (el.processMsg) el.processMsg.textContent = D.processing[0];
+
+    if (el.processDims) {
+      el.processDims.innerHTML = D.dimensions
+        .map(function (d, i) {
+          return (
+            '<div class="dim-row" data-i="' +
+            i +
+            '"><span class="dim-label">' +
+            d +
+            '</span><div class="dim-bar"><div class="dim-fill" style="width:0%"></div></div></div>'
+          );
+        })
+        .join("");
+    }
+
+    var msgs = D.processing;
+    var step = 0;
+    var totalMs = 4000;
+    var interval = totalMs / msgs.length;
+
+    function tick() {
+      if (step < msgs.length) {
+        if (el.processMsg) el.processMsg.textContent = msgs[step];
+        // anima barras progressivamente
+        if (el.processDims) {
+          var fills = el.processDims.querySelectorAll(".dim-fill");
+          fills.forEach(function (f, i) {
+            if (i <= step) {
+              var target = 40 + ((i * 17 + step * 11) % 50);
+              f.style.width = target + "%";
+            }
+          });
+        }
+        step += 1;
+        window.setTimeout(tick, interval);
+      } else {
+        if (el.processDone) {
+          el.processDone.hidden = false;
+          el.processDone.textContent = "Seu resultado está pronto.";
+        }
+        window.setTimeout(function () {
+          finishAndShowResult();
+        }, 500);
+      }
+    }
+    tick();
+  }
+
+  function finishAndShowResult() {
+    var r = resolvePatterns();
+    var pat = D.patterns[r.primary];
+    Ax.result(r.primary, r.secondary, {
+      patternName: pat ? pat.name : "",
+      name: state.name || null,
+      scores: state.scores,
+    });
+    Px.viewContent();
+    renderResult();
+  }
+
+  /* ─── result ─── */
+
+  function greetName() {
+    if (state.name) return state.name.split(/\s+/)[0];
+    return "";
+  }
+
+  function renderResult() {
+    var r = resolvePatterns();
+    var pat = D.patterns[r.primary];
+    var sec = r.secondary ? D.patterns[r.secondary] : null;
+    if (!pat) return;
+
+    showPage("result");
+
+    var root = document.getElementById("result-content");
+    if (!root) return;
+
+    var name = greetName();
+    var hello = name
+      ? "<p class=\"result-hello\">" + name + ", este é o seu ciclo predominante.</p>"
+      : "";
+
+    var reactions = pat.reactions
+      .map(function (x) {
+        return "<li>" + x + "</li>";
+      })
+      .join("");
+
+    var secHtml = sec
+      ? '<div class="result-sec card-soft"><p class="result-sec-label">Também aparece com força:</p><p class="result-sec-name">' +
+        sec.name +
+        '</p><p class="result-sec-note">A análise completa mostra como os dois padrões se combinam no seu dia a dia.</p></div>'
+      : "";
+
+    // gráfico visual simples das 4 dimensões
+    var dims = pat.dims || {};
+    var dimMap = [
+      { k: "choice", label: "Escolha e atração" },
+      { k: "distance", label: "Resposta à distância" },
+      { k: "limits", label: "Limites e reciprocidade" },
+      { k: "protection", label: "Proteção emocional" },
+    ];
+    var chart = dimMap
+      .map(function (d) {
+        var v = dims[d.k] || 50;
+        return (
+          '<div class="chart-row"><span class="chart-label">' +
+          d.label +
+          '</span><div class="chart-bar"><div class="chart-fill" style="width:' +
+          v +
+          '%"></div></div></div>'
+        );
+      })
+      .join("");
+
+    root.innerHTML =
+      hello +
+      "<h1 class=\"result-title\">" +
+      pat.title +
+      "</h1>" +
+      '<p class="result-desc">' +
+      pat.description +
+      "</p>" +
+      '<div class="result-block"><h2>Como geralmente começa</h2><p>' +
+      pat.starts +
+      "</p></div>" +
+      '<div class="result-block"><h2>Reação automática</h2><ul>' +
+      reactions +
+      "</ul></div>" +
+      '<div class="result-block result-blind"><h2>Ponto que pode passar despercebido</h2><p>' +
+      pat.blind +
+      "</p></div>" +
+      '<div class="result-block result-ex"><h2>' +
+      pat.exerciseTitle +
+      "</h2><p>" +
+      pat.exercise +
+      "</p></div>" +
+      '<div class="result-block"><h2>Suas quatro dimensões</h2><div class="chart">' +
+      chart +
+      "</div></div>" +
+      secHtml +
+      '<div class="result-cta-wrap">' +
+      '<p class="result-bridge">' +
+      D.offer.bridge +
+      "</p>" +
+      '<button type="button" class="btn btn-primary btn-block" id="btn-to-offer">VER MEU MAPA COMPLETO</button>' +
+      "</div>";
+
+    var btn = document.getElementById("btn-to-offer");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        renderOffer();
+      });
+    }
+
+    // anima barras
+    window.requestAnimationFrame(function () {
+      var fills = root.querySelectorAll(".chart-fill");
+      fills.forEach(function (f) {
+        var w = f.style.width;
+        f.style.width = "0%";
+        requestAnimationFrame(function () {
+          f.style.width = w;
+        });
+      });
+    });
+
+    saveProgress();
+  }
+
+  /* ─── offer ─── */
+
+  function buildCheckoutUrl() {
+    var url = C.checkoutUrl || "https://lastlink.com/p/C53821E2C/checkout-payment/";
+    try {
+      var u = new URL(url);
+      // preserva UTMs
+      ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid"].forEach(
+        function (k) {
+          var v = null;
+          try {
+            v =
+              sessionStorage.getItem("mapa_" + k) ||
+              localStorage.getItem("mapa_" + k) ||
+              new URLSearchParams(location.search).get(k);
+          } catch (e) {}
+          if (v && !u.searchParams.get(k)) u.searchParams.set(k, v);
+        }
+      );
+      return u.toString();
+    } catch (e) {
+      return url;
+    }
+  }
+
+  function renderOffer() {
+    showPage("offer");
+    var root = document.getElementById("offer-content");
+    if (!root) return;
+
+    var pat = D.patterns[state.primary] || D.patterns.A;
+    var sec = state.secondary ? D.patterns[state.secondary] : null;
+    var price = typeof C.price === "number" ? C.price : 29.9;
+    var anchor = C.priceAnchor;
+    var showAnchor = C.showPriceAnchor && anchor && anchor > price;
+
+    var locked = D.offer.features
+      .map(function (f, i) {
+        var lockedClass = i > 1 ? "is-locked" : "";
+        return (
+          '<li class="offer-feat ' +
+          lockedClass +
+          '"><span class="feat-icon" aria-hidden="true">' +
+          (i > 1 ? "🔒" : "✓") +
+          "</span><span>" +
+          f +
+          "</span></li>"
+        );
+      })
+      .join("");
+
+    var priceHtml = showAnchor
+      ? '<p class="price-anchor">De <s>' +
+        money(anchor) +
+        '</s></p><p class="price-main">por <strong>' +
+        money(price) +
+        "</strong></p>"
+      : '<p class="price-main">Acesso completo por <strong>' + money(price) + "</strong></p>";
+
+    var name = greetName();
+    var previewTitle = name ? name + ", seu mapa completo" : "Seu mapa completo";
+
+    root.innerHTML =
+      '<p class="offer-bridge">' +
+      D.offer.bridge +
+      "</p>" +
+      '<div class="map-preview card">' +
+      '<p class="map-preview-kicker">' +
+      previewTitle +
+      "</p>" +
+      '<div class="map-preview-row"><span>Ciclo predominante</span><strong>' +
+      pat.name +
+      "</strong></div>" +
+      (sec
+        ? '<div class="map-preview-row"><span>Padrão secundário</span><strong>' +
+          sec.name +
+          "</strong></div>"
+        : "") +
+      '<div class="map-preview-blur" aria-hidden="true">' +
+      "<p>Gatilhos emocionais · Comportamentos automáticos · Crenças · Plano 28 dias</p>" +
+      '<span class="lock-badge">Conteúdo completo no mapa</span>' +
+      "</div>" +
+      "</div>" +
+      "<h1 class=\"offer-title\">" +
+      D.offer.title +
+      "</h1>" +
+      '<p class="offer-body">' +
+      D.offer.body +
+      "</p>" +
+      '<ul class="offer-list">' +
+      locked +
+      "</ul>" +
+      '<div class="price-box card">' +
+      priceHtml +
+      '<ul class="price-perks">' +
+      "<li>Pagamento único</li>" +
+      "<li>Acesso imediato</li>" +
+      "<li>Garantia de " +
+      (C.guaranteeDays || 7) +
+      " dias conforme os termos da compra</li>" +
+      "<li>Checkout seguro · Pix e cartão</li>" +
+      "</ul>" +
+      '<button type="button" class="btn btn-primary btn-block" id="btn-checkout">' +
+      D.offer.cta +
+      "</button>" +
+      "</div>" +
+      '<p class="disclaimer">' +
+      D.offer.disclaimer +
+      "</p>";
+
+    var btn = document.getElementById("btn-checkout");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        goCheckout();
+      });
+    }
+    saveProgress();
+  }
+
+  function goCheckout() {
+    Px.initiateCheckout();
+    Ax.checkout();
+    Ax.flush();
+    var url = buildCheckoutUrl();
+    window.location.href = url;
+  }
+
+  /* ─── cookies ─── */
+
+  function setupCookies() {
+    if (!el.cookieBanner) return;
+    try {
+      if (localStorage.getItem("mapa_cookie_ok") === "1") {
+        el.cookieBanner.hidden = true;
+        return;
+      }
+    } catch (e) {}
+    el.cookieBanner.hidden = false;
+    var ok = document.getElementById("btn-cookie-ok");
+    if (ok) {
+      ok.addEventListener("click", function () {
+        try {
+          localStorage.setItem("mapa_cookie_ok", "1");
+        } catch (e) {}
+        el.cookieBanner.hidden = true;
+      });
+    }
+  }
+
+  /* ─── bind ─── */
+
+  function bind() {
+    var start = document.getElementById("btn-start");
+    if (start) start.addEventListener("click", startQuiz);
+
+    var nameCta = document.getElementById("btn-name-continue");
+    if (nameCta) nameCta.addEventListener("click", continueFromName);
+    if (el.nameInput) {
+      el.nameInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          continueFromName();
+        }
+      });
+    }
+
+    var midCta = document.getElementById("btn-mid-continue");
+    if (midCta) midCta.addEventListener("click", continueFromMid);
+
+    if (el.btnBack) el.btnBack.addEventListener("click", goBack);
+
+    // skip name link
+    var skip = document.getElementById("btn-name-skip");
+    if (skip) {
+      skip.addEventListener("click", function () {
+        if (el.nameInput) el.nameInput.value = "";
+        continueFromName();
+      });
+    }
+  }
+
+  /* ─── boot ─── */
+
+  function boot() {
+    bind();
+    setupCookies();
+    Ax.landing();
+
+    // resume?
+    var saved = loadProgress();
+    var params = new URLSearchParams(location.search);
+    if (params.get("reset") === "1") {
+      clearProgress();
+      saved = null;
+    }
+
+    if (saved && saved.answers && Object.keys(saved.answers).length > 0) {
+      state.qIndex = saved.qIndex || 0;
+      state.answers = saved.answers || {};
+      state.scores = saved.scores || { A: 0, B: 0, C: 0, D: 0 };
+      state.name = saved.name || "";
+      state.primary = saved.primary || null;
+      state.secondary = saved.secondary || null;
+      recomputeScores();
+
+      if (saved.screen === "result" && state.primary) {
+        renderResult();
+        return;
+      }
+      if (saved.screen === "offer" && state.primary) {
+        renderOffer();
+        return;
+      }
+      if (saved.screen === "name") {
+        renderNameGate();
+        return;
+      }
+      if (saved.screen === "mid") {
+        renderMid();
+        return;
+      }
+      if (saved.screen === "quiz") {
+        renderQuestion();
+        return;
+      }
+    }
+
+    renderOpen();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();

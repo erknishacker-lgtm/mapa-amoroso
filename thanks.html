@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#faf6f1" />
+  <title>Obrigada — Mapa do Ciclo Amoroso</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Meta Pixel -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '4427665624163520');
+  fbq('track', 'PageView');
+  </script>
+</head>
+<body>
+  <main class="page">
+    <div class="wrap">
+      <header class="brand">
+        <p class="brand-name">Mapa do <strong>Ciclo Amoroso</strong></p>
+      </header>
+
+      <div class="thanks-hero">
+        <h1>Seu acesso está a caminho</h1>
+        <p>
+          Obrigada pela confiança. O Mapa Completo do Ciclo Amoroso será liberado conforme a
+          confirmação do pagamento. Verifique também o e-mail informado no checkout (e a caixa de spam).
+        </p>
+      </div>
+
+      <!-- Upsell opcional pós-compra -->
+      <div class="card upsell-card" id="upsell-card">
+        <h2>Plano de Proteção Emocional de 28 Dias</h2>
+        <p>
+          Uma atividade por dia, exercícios curtos, diário de progresso, roteiros de limites,
+          perguntas de reflexão e plano para reconhecer relações mais seguras.
+          Áudios curtos opcionais.
+        </p>
+        <p class="upsell-price">R$ 59,90</p>
+        <ul class="price-perks">
+          <li>Uma atividade por dia</li>
+          <li>Exercícios curtos e práticos</li>
+          <li>Diário de progresso</li>
+          <li>Roteiros de limites</li>
+          <li>Perguntas de reflexão</li>
+        </ul>
+        <button type="button" class="btn btn-primary btn-block" id="btn-upsell-yes">
+          SIM, QUERO ADICIONAR AO MEU ACESSO
+        </button>
+        <button type="button" class="btn btn-ghost btn-block" id="btn-upsell-no">
+          Não, obrigada — continuar sem o plano
+        </button>
+      </div>
+
+      <div class="card" id="upsell-done" hidden>
+        <p style="margin:0;color:var(--ink-soft);text-align:center">
+          Tudo certo. Você pode fechar esta página. Qualquer dúvida, use o suporte do checkout.
+        </p>
+      </div>
+
+      <p class="disclaimer" style="margin-top:24px">
+        Material educativo de autoconhecimento. Não realiza diagnóstico psicológico e não substitui
+        acompanhamento profissional.
+      </p>
+
+      <footer class="site-footer">
+        <a href="privacy.html">Privacidade</a>
+        <a href="terms.html">Termos</a>
+        <a href="index.html">Início</a>
+      </footer>
+    </div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="pixel.js"></script>
+  <script src="analytics.js"></script>
+  <script>
+  (function () {
+    var C = window.MAPA_CONFIG || {};
+    var price = typeof C.price === "number" ? C.price : 29.9;
+    var upsellPrice = typeof C.upsellPrice === "number" ? C.upsellPrice : 59.9;
+    var Px = window.MapaPixel || {};
+    var Ax = window.MapaAnalytics || {};
+
+    // Purchase confirmado (página de obrigado) — valor do mapa principal
+    // eventID único para deduplicação com CAPI, se houver
+    var params = new URLSearchParams(location.search);
+    var eventId = params.get("event_id") || params.get("eventId") || null;
+    var paid = parseFloat(params.get("value") || params.get("amount") || String(price));
+    if (isNaN(paid)) paid = price;
+
+    if (Px.purchase) {
+      Px.purchase({ value: paid, eventId: eventId || undefined, productId: "mapa-ciclo-amoroso" });
+    }
+    if (Ax.purchase) Ax.purchase(paid);
+
+    var card = document.getElementById("upsell-card");
+    var done = document.getElementById("upsell-done");
+    var yes = document.getElementById("btn-upsell-yes");
+    var no = document.getElementById("btn-upsell-no");
+
+    function hideUpsell() {
+      if (card) card.hidden = true;
+      if (done) done.hidden = false;
+    }
+
+    if (yes) {
+      yes.addEventListener("click", function () {
+        // Checkout do upsell: use URL dedicada se configurada
+        var url = C.upsellCheckoutUrl || C.checkoutUrl || "#";
+        if (Px.initiateCheckout) Px.initiateCheckout();
+        if (Ax.checkout) Ax.checkout();
+        // registra interesse no upsell internamente
+        try {
+          if (Ax.flush) Ax.flush();
+        } catch (e) {}
+        if (url && url !== "#") {
+          window.location.href = url;
+        } else {
+          hideUpsell();
+          alert("Em breve o checkout do plano de 28 dias estará disponível. Obrigada!");
+        }
+      });
+    }
+    if (no) {
+      no.addEventListener("click", hideUpsell);
+    }
+  })();
+  </script>
+</body>
+</html>
