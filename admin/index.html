@@ -7,29 +7,53 @@
   <title>Quiz Intelligence · Mapa Amoroso</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <!-- LOGIN -->
+  <!-- ========== LOGIN (autônomo — não depende de admin.js) ========== -->
   <div id="login-screen" class="shell-login">
-    <div class="login-orb" aria-hidden="true"></div>
+    <div class="login-glow" aria-hidden="true"></div>
     <div class="login-card">
-      <div class="login-mark">QI</div>
-      <p class="login-kicker">Quiz Intelligence</p>
-      <h1>Painel do funil</h1>
-      <p class="login-sub">Acompanhe cada lead na esteira de perguntas — abandono, respostas e checkout.</p>
-      <label class="field" for="admin-password">
-        <span>Senha</span>
-        <input id="admin-password" type="password" placeholder="mapa2026" autocomplete="current-password" />
-      </label>
-      <button type="button" class="btn-glow" id="btn-login">Entrar no painel</button>
-      <p id="login-error" class="login-error" hidden></p>
-      <p id="login-debug" class="login-debug"></p>
+      <div class="login-top">
+        <div class="login-mark">QI</div>
+        <div>
+          <p class="login-kicker">Quiz Intelligence</p>
+          <p class="login-product">Mapa do Padrão Amoroso</p>
+        </div>
+      </div>
+      <h1>Entrar no painel</h1>
+      <p class="login-sub">Funil, esteira de leads e respostas — senha do Supabase.</p>
+
+      <form id="login-form" action="javascript:void(0)" method="post" autocomplete="on">
+        <label class="field" for="admin-password">
+          <span>Senha de acesso</span>
+          <input
+            id="admin-password"
+            name="password"
+            type="password"
+            inputmode="text"
+            autocomplete="current-password"
+            placeholder="mapa2026"
+            required
+          />
+        </label>
+        <button type="submit" class="btn-glow" id="btn-login">
+          <span id="btn-login-label">Entrar no painel</span>
+        </button>
+      </form>
+
+      <p id="login-error" class="login-error" role="alert"></p>
+      <p id="login-debug" class="login-debug" aria-live="polite"></p>
+
+      <div class="login-hint">
+        <p><strong>Senha padrão:</strong> <code>mapa2026</code></p>
+        <p>Se falhar: rode <code>supabase/fix_admin.sql</code> no SQL Editor do Supabase.</p>
+      </div>
     </div>
   </div>
 
-  <!-- APP -->
+  <!-- ========== APP ========== -->
   <div id="app" class="app" hidden>
     <aside class="sidebar">
       <div class="side-brand">
@@ -40,18 +64,10 @@
         </div>
       </div>
       <nav class="side-nav">
-        <button type="button" class="nav-item is-active" data-view="funnel">
-          <span class="nav-ico">◈</span> Funil
-        </button>
-        <button type="button" class="nav-item" data-view="table">
-          <span class="nav-ico">▦</span> Esteira de leads
-        </button>
-        <button type="button" class="nav-item" data-view="answers">
-          <span class="nav-ico">◎</span> Respostas
-        </button>
-        <button type="button" class="nav-item" data-view="perf">
-          <span class="nav-ico">△</span> Performance
-        </button>
+        <button type="button" class="nav-item is-active" data-view="funnel"><span class="nav-ico">◈</span> Funil</button>
+        <button type="button" class="nav-item" data-view="table"><span class="nav-ico">▦</span> Esteira</button>
+        <button type="button" class="nav-item" data-view="answers"><span class="nav-ico">◎</span> Respostas</button>
+        <button type="button" class="nav-item" data-view="perf"><span class="nav-ico">△</span> Performance</button>
       </nav>
       <div class="side-foot">
         <button type="button" class="btn-ghost" id="btn-export">Exportar CSV</button>
@@ -63,7 +79,7 @@
       <header class="topbar">
         <div>
           <h2 id="view-title">Funil do quiz</h2>
-          <p class="top-sub" id="status-line">Carregando…</p>
+          <p class="top-sub" id="status-line">—</p>
         </div>
         <div class="toolbar">
           <div class="seg">
@@ -78,10 +94,8 @@
         </div>
       </header>
 
-      <!-- FUNIL -->
       <section id="view-funnel" class="view is-active">
         <div class="kpi-row" id="kpis"></div>
-
         <div class="grid-funnel">
           <article class="card card-wide">
             <div class="card-head">
@@ -91,32 +105,28 @@
             <div class="funnel-rail" id="funnel-rail"></div>
           </article>
           <article class="card">
-            <div class="card-head">
-              <h3>Destaques</h3>
-            </div>
+            <div class="card-head"><h3>Destaques</h3></div>
             <ul class="insight-list" id="insight-list"></ul>
           </article>
         </div>
-
         <div class="grid-2">
           <article class="card">
             <div class="card-head"><h3>Volume por dia</h3></div>
             <canvas id="chart-day" height="160"></canvas>
           </article>
           <article class="card">
-            <div class="card-head"><h3>Volume por hora</h3><p>America/São Paulo</p></div>
+            <div class="card-head"><h3>Volume por hora (SP)</h3></div>
             <canvas id="chart-hour" height="160"></canvas>
           </article>
         </div>
       </section>
 
-      <!-- ESTEIRA -->
       <section id="view-table" class="view">
         <article class="card card-flush">
           <div class="card-head row-between">
             <div>
               <h3>Esteira de leads</h3>
-              <p>1 linha = 1 pessoa · colunas = perguntas · vazio = parou</p>
+              <p>1 linha = 1 pessoa · colunas = perguntas · vazio = abandonou</p>
             </div>
             <div class="table-tools">
               <input type="search" id="table-search" class="search-input" placeholder="Buscar lead, UTM, padrão…" />
@@ -135,33 +145,25 @@
               </select>
               <select id="filter-checkout" class="select">
                 <option value="">Checkout</option>
-                <option value="yes">Comprou / clicou</option>
+                <option value="yes">Clicou</option>
                 <option value="no">Não clicou</option>
               </select>
             </div>
           </div>
           <div class="sheet-wrap">
-            <table class="sheet" id="leads-sheet">
-              <thead></thead>
-              <tbody></tbody>
-            </table>
+            <table class="sheet" id="leads-sheet"><thead></thead><tbody></tbody></table>
           </div>
         </article>
       </section>
 
-      <!-- RESPOSTAS -->
       <section id="view-answers" class="view">
         <article class="card">
-          <div class="card-head">
-            <h3>O que mais marcaram</h3>
-            <p>Ranking por pergunta</p>
-          </div>
+          <div class="card-head"><h3>Respostas mais marcadas</h3></div>
           <div class="chip-row" id="answer-q-filters"></div>
           <div id="answers-list" class="answers-grid"></div>
         </article>
       </section>
 
-      <!-- PERF -->
       <section id="view-perf" class="view">
         <div class="kpi-row" id="perf-kpis"></div>
         <div class="grid-2">
@@ -171,7 +173,7 @@
             <div id="patterns-list" class="patterns-list"></div>
           </article>
           <article class="card">
-            <div class="card-head"><h3>Conversão por dispositivo / UTM</h3></div>
+            <div class="card-head"><h3>Conversão por device / UTM</h3></div>
             <div id="perf-breakdown" class="breakdown"></div>
           </article>
         </div>
@@ -179,7 +181,6 @@
     </div>
   </div>
 
-  <!-- DRAWER LEAD -->
   <div id="drawer-bg" class="drawer-bg" hidden></div>
   <aside id="drawer" class="drawer" hidden>
     <div class="drawer-head">
@@ -193,14 +194,157 @@
   </aside>
 
   <script>
+    // Config embutida — sempre disponível
     window.MAPA_CONFIG = {
       supabaseUrl: "https://nrdwnrdbocivrcaujqey.supabase.co",
       supabaseAnonKey: "sb_publishable_RO2B7XCTosTdDTCPpMNAjA_iZP68utA",
       timezoneLabel: "America/Sao_Paulo"
     };
+
+    function ymd(d) {
+      var x = new Date(d);
+      return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
+    }
+
+    function ensureDates() {
+      var from = document.getElementById("date-from");
+      var to = document.getElementById("date-to");
+      if (to && !to.value) to.value = ymd(new Date());
+      if (from && !from.value) {
+        var d = new Date();
+        d.setDate(d.getDate() - 6);
+        from.value = ymd(d);
+      }
+    }
+
+    function setLoginUI(err, debug) {
+      var e = document.getElementById("login-error");
+      var d = document.getElementById("login-debug");
+      if (e) {
+        e.hidden = !err;
+        e.textContent = err || "";
+        e.style.display = err ? "block" : "none";
+      }
+      if (d) d.textContent = debug || "";
+    }
+
+    function openPanel() {
+      var login = document.getElementById("login-screen");
+      var app = document.getElementById("app");
+      if (login) {
+        login.hidden = true;
+        login.style.display = "none";
+      }
+      if (app) {
+        app.hidden = false;
+        app.style.display = "grid";
+      }
+    }
+
+    async function doLogin(ev) {
+      if (ev) ev.preventDefault();
+      var input = document.getElementById("admin-password");
+      var btn = document.getElementById("btn-login");
+      var label = document.getElementById("btn-login-label");
+      var pass = (input && input.value ? input.value : "").trim();
+
+      if (!pass) {
+        setLoginUI("Digite a senha: mapa2026", "");
+        if (input) input.focus();
+        return false;
+      }
+
+      ensureDates();
+      var from = document.getElementById("date-from").value;
+      var to = document.getElementById("date-to").value;
+      var cfg = window.MAPA_CONFIG;
+      var url = (cfg.supabaseUrl || "").replace(/\/$/, "");
+      var key = cfg.supabaseAnonKey || "";
+
+      if (btn) btn.disabled = true;
+      if (label) label.textContent = "Entrando…";
+      setLoginUI("", "Conectando em " + url + " …");
+
+      try {
+        var res = await fetch(url + "/rest/v1/rpc/admin_analytics", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: key,
+            Authorization: "Bearer " + key
+          },
+          body: JSON.stringify({
+            p_password: pass,
+            p_from: from + "T00:00:00-03:00",
+            p_to: to + "T23:59:59.999-03:00"
+          })
+        });
+
+        var text = await res.text();
+        setLoginUI("", "HTTP " + res.status + " · " + text.slice(0, 120));
+
+        if (!res.ok) {
+          if (/UNAUTHORIZED|42501/i.test(text)) {
+            throw new Error("Senha recusada. Rode o arquivo supabase/fix_admin.sql no SQL Editor do Supabase.");
+          }
+          if (/PGRST202|Could not find the function/i.test(text)) {
+            throw new Error("Função admin_analytics não existe. Rode fix_admin.sql no Supabase.");
+          }
+          if (/quiz_leads|PGRST205/i.test(text)) {
+            throw new Error("Tabela quiz_leads não existe. Rode schema.sql e depois fix_admin.sql.");
+          }
+          throw new Error("Erro " + res.status + ": " + text.slice(0, 140));
+        }
+
+        var data = JSON.parse(text);
+        try { sessionStorage.setItem("mapa_admin_pass", pass); } catch (e) {}
+
+        // Abre o painel SEMPRE, mesmo se o render falhar
+        openPanel();
+        setLoginUI("", "Login OK");
+
+        try {
+          if (typeof window.__adminRender === "function") {
+            window.__adminRender(data);
+          } else {
+            // fallback mínimo de KPIs
+            var t = data.totals || {};
+            var k = document.getElementById("kpis");
+            if (k) {
+              k.innerHTML =
+                '<div class="kpi"><span>Leads</span><strong>' + (t.leads || 0) + "</strong></div>" +
+                '<div class="kpi"><span>Inícios</span><strong>' + (t.started || 0) + "</strong></div>" +
+                '<div class="kpi"><span>Resultados</span><strong>' + (t.completed || 0) + "</strong></div>" +
+                '<div class="kpi hot"><span>Checkout</span><strong>' + (t.checkouts || 0) + "</strong></div>";
+            }
+            var st = document.getElementById("status-line");
+            if (st) st.textContent = "Login OK · " + ((data.leads && data.leads.length) || 0) + " leads";
+          }
+        } catch (renderErr) {
+          var st2 = document.getElementById("status-line");
+          if (st2) st2.textContent = "Login OK, mas o render falhou: " + (renderErr.message || renderErr);
+          console.error(renderErr);
+        }
+      } catch (err) {
+        setLoginUI(err.message || String(err), "");
+        console.error(err);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = "Entrar no painel";
+      }
+      return false;
+    }
+
+    // Bind imediato — form submit + botão
+    document.getElementById("login-form").addEventListener("submit", doLogin);
+    document.getElementById("btn-login").addEventListener("click", doLogin);
+
+    // Exposto globalmente
+    window.__doAdminLogin = doLogin;
   </script>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="../data.js"></script>
-  <script src="admin.js"></script>
+  <script src="../data.js" onerror="console.warn('data.js offline')"></script>
+  <script src="admin.js" onerror="console.warn('admin.js offline')"></script>
 </body>
 </html>

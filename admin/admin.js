@@ -811,46 +811,40 @@
     $("view-title").textContent = titles[name] || "Painel";
   }
 
-  // Login
-  $("btn-login").onclick = async function () {
-    var pass = ($("admin-password").value || "").trim();
-    var btn = $("btn-login");
-    var dbg = $("login-debug");
-    if (!pass) {
-      showLogin("Digite a senha mapa2026");
-      return;
-    }
-    btn.disabled = true;
-    btn.textContent = "Entrando…";
-    $("login-error").hidden = true;
+  // Login é feito no HTML (form). Aqui só render + toolbar.
+  function applyAllSafe(data) {
     try {
-      setPass(pass);
-      if (!$("date-from").value) setDates(7);
-      var data = await fetchAnalytics(pass);
-      showApp();
       applyAll(data);
-      dbg.textContent = "OK · HTTP 200";
     } catch (e) {
-      clearPass();
-      showLogin(e.message || String(e));
-      dbg.textContent = e.message || "";
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Entrar no painel";
+      console.error("applyAll", e);
+      if ($("status-line")) {
+        $("status-line").textContent = "Dados carregados com aviso: " + (e.message || e);
+      }
     }
-  };
-  $("admin-password").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") $("btn-login").click();
-  });
+  }
 
-  $("btn-refresh").onclick = load;
-  $("btn-logout").onclick = function () {
-    clearPass();
-    showLogin();
-  };
-  $("btn-export").onclick = exportCsv;
-  $("drawer-close").onclick = closeDrawer;
-  $("drawer-bg").onclick = closeDrawer;
+  window.__adminRender = applyAllSafe;
+  window.__adminLoad = load;
+
+  if ($("btn-refresh")) $("btn-refresh").onclick = load;
+  if ($("btn-logout")) {
+    $("btn-logout").onclick = function () {
+      clearPass();
+      var login = $("login-screen");
+      var app = $("app");
+      if (login) {
+        login.hidden = false;
+        login.style.display = "";
+      }
+      if (app) {
+        app.hidden = true;
+        app.style.display = "none";
+      }
+    };
+  }
+  if ($("btn-export")) $("btn-export").onclick = exportCsv;
+  if ($("drawer-close")) $("drawer-close").onclick = closeDrawer;
+  if ($("drawer-bg")) $("drawer-bg").onclick = closeDrawer;
 
   document.querySelectorAll(".nav-item").forEach(function (btn) {
     btn.onclick = function () {
@@ -876,7 +870,9 @@
     node.addEventListener("change", applyLeadFilters);
   });
 
-  setDates(7);
-  window.__adminRender = applyAll;
-  window.__adminLoad = load;
+  try {
+    setDates(7);
+  } catch (e) {
+    console.warn(e);
+  }
 })();
